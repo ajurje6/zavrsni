@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Query
 import pandas as pd
 import os
 from fastapi.middleware.cors import CORSMiddleware
@@ -68,10 +68,19 @@ def parse_all_txt(folder_path):
     return all_data
 
 @app.get("/data")
-def get_data():
+def get_data(date: str = Query("2025-03-01", alias="date", description="Date to filter data by (YYYY-MM-DD)")):
     folder_path = "./data/bakar-mikrobarometar"  # Folder where your TXT files are stored
     data = parse_all_txt(folder_path)  # Get data from all files
+
+    # Filter data based on the provided date (if any)
+    if date:
+        # Convert the date string to a datetime object
+        filter_date = pd.to_datetime(date)
+        
+        # Filter data to include only the records for the selected date
+        data = [entry for entry in data if pd.to_datetime(entry["datetime"]).date() == filter_date.date()]
+        logger.info(f"Filtering data for {date}, {len(data)} records found")
+
     logger.info(f"Returning {len(data)} records")
     return {"data": data}  # Return data in JSON format
-
-# To run the server, use the command: uvicorn main:app --reload
+# To run the server, use the command: uvicorn main:app --reload this is backend
