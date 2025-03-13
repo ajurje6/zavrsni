@@ -1,3 +1,4 @@
+"use client"
 import { useEffect, useState } from "react";
 import axios from "axios";
 import dynamic from "next/dynamic";
@@ -13,14 +14,14 @@ import {
     Legend
 } from "chart.js";
 import "chartjs-adapter-date-fns";
-import BarometerTable from "../BarometerTable/page"; 
+import BarometerTable from "../BarometerTable/page";
 
 // Dynamically import LineChart to prevent SSR issues
 const LineChart = dynamic(() => import("react-chartjs-2").then((mod) => mod.Line), {
     ssr: false,
 });
 
- //Registers required components
+// Registers required components
 ChartJS.register(
     LineElement,
     CategoryScale,
@@ -36,31 +37,33 @@ export default function BarometerGraph() {
     const [chartData, setChartData] = useState<any>(null);
     const [isLoading, setIsLoading] = useState<boolean>(true);
     const [selectedDate, setSelectedDate] = useState<string>("2025-01-03");
-    const [minMaxAvgData, setMinMaxAvgData] = useState<any[]>([]); // Stores calculated summary data for multiple dates
+    const [minMaxAvgData, setMinMaxAvgData] = useState<any[]>([]);
 
-    // Fetches data for the selected date
+    // Dynamically import zoom plugin to prevent SSR issues
+    useEffect(() => {
+        import("chartjs-plugin-zoom").then((zoomPlugin) => {
+            ChartJS.register(zoomPlugin.default);
+        }).catch((err) => console.error("Failed to load zoom plugin", err));
+    }, []);
+
     useEffect(() => {
         setIsLoading(true);
 
-        // Ensure the selected date is being correctly passed to the API
         axios.get(`http://127.0.0.1:8000/data?date=${selectedDate}`)
             .then((response) => {
                 const data = response.data.data;
 
-                // Check if there's data
                 if (data.length === 0) {
                     console.error("No data received from API.");
                     setIsLoading(false);
                     return;
                 }
 
-                // Calculate min, max, and avg for the selected date
                 const pressures = data.map((d: any) => d.pressure);
                 const minPressure = Math.min(...pressures);
                 const maxPressure = Math.max(...pressures);
                 const avgPressure = pressures.reduce((acc: number, pressure: number) => acc + pressure, 0) / pressures.length;
 
-                // Update the minMaxAvgData with the summary for the selected date
                 setMinMaxAvgData((prevData) => [
                     ...prevData,
                     {
@@ -87,7 +90,7 @@ export default function BarometerGraph() {
                 console.error("Error fetching data:", error);
                 setIsLoading(false);
             });
-    }, [selectedDate]); // Triggered on selectedDate change
+    }, [selectedDate]);
 
     const handleDateChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         setSelectedDate(event.target.value);
@@ -106,16 +109,28 @@ export default function BarometerGraph() {
                 },
                 ticks: { color: "white", autoSkip: false, maxRotation: 0, minRotation: 0, maxTicksLimit: 1000 },
             },
-            y: { type: "linear" as const, ticks: { color: "white", beginAtZero: false, autoSkip: true, maxTicksLimit: 10 } },
+            y: {
+                type: "linear" as const,
+                ticks: { color: "white", beginAtZero: false, autoSkip: true, maxTicksLimit: 10 },
+            },
         },
         plugins: {
             legend: { position: "top" as const },
             zoom: {
-                pan: { enabled: true, mode: "xy" as const },
-                zoom: { enabled: true, mode: "xy" as const },
+                pan: {
+                    enabled: true,        // Enables panning
+                    mode: "xy" as const,  // Allows panning both horizontally and vertically
+                },
+                zoom: {
+                    enabled: true,        // Enables zooming
+                    mode: "xy" as const,  // Allows zooming both horizontally and vertically
+                    speed: 0.1,           // Sets the zooming speed
+                    threshold: 10,        // Sets the threshold for zooming
+                },
             },
         },
     };
+    
 
     return (
         <div className="flex flex-col items-center p-6">
@@ -141,11 +156,8 @@ export default function BarometerGraph() {
                 <p className="text-lg text-red-600">No data available for this date.</p>
             )}
 
-            {/* Passes calculated summary data to the table component */}
             <BarometerTable data={minMaxAvgData} />
         </div>
     );
 }
-
-
 
