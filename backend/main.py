@@ -21,13 +21,13 @@ logger = logging.getLogger(__name__)
 
 def parse_txt(file_path):
     try:
-        # Triees to read the file assuming that the values are separated by spaces
+        # Tries to read the file assuming that the values are separated by spaces
         try:
             df = pd.read_csv(file_path, sep=r'\s+', header=None,
                              names=["year", "month", "day", "hour", "minute", "second", "pressure"])
         except Exception as e:
             logger.warning(f"Space-separated parsing failed for {file_path}: {e}")
-            # If space-separated parsing fails, tres reading with a different separator
+            # If space-separated parsing fails, tries reading with a different separator
             df = pd.read_csv(file_path, header=None,
                              names=["year", "month", "day", "hour", "minute", "second", "pressure"])
 
@@ -68,19 +68,51 @@ def parse_all_txt(folder_path):
     return all_data
 
 @app.get("/data")
-def get_data(date: str = Query("2025-03-01", alias="date", description="Date to filter data by (YYYY-MM-DD)")):
+def get_data(date: str = Query(None, alias="date", description="Date to filter data by (YYYY-MM-DD)")):
     folder_path = "./data/bakar-mikrobarometar"  # Folder where .txts are stored
     data = parse_all_txt(folder_path)  # Gets data from all files
 
-    # Filters data based on the provided date (if any)
+    # Apply filtering only if a date is provided
     if date:
-        # Converts the date string to a datetime object
-        filter_date = pd.to_datetime(date)
-        
-        # Filter data to include only the records for the selected date
-        data = [entry for entry in data if pd.to_datetime(entry["datetime"]).date() == filter_date.date()]
-        logger.info(f"Filtering data for {date}, {len(data)} records found")
+        try:
+            filter_date = pd.to_datetime(date)
+            data = [entry for entry in data if pd.to_datetime(entry["datetime"]).date() == filter_date.date()]
+            logger.info(f"Filtering data for {date}, {len(data)} records found")
+        except Exception as e:
+            logger.error(f"Invalid date format provided: {date}, Error: {e}")
+            return {"error": "Invalid date format. Use YYYY-MM-DD."}
 
-    logger.info(f"Returning {len(data)} records")
-    return {"data": data}  # Returns data in JSON format
+    # Ensure the pressure values are treated as floats
+    if data:
+        pressures = [
+    float(entry["pressure"].strip("[]")) if isinstance(entry["pressure"], str) else float(entry["pressure"])
+    for entry in data if entry["pressure"] is not None
+]
+
+        # Calculate min, max, and avg pressure
+        if pressures:
+            min_pressure = min(pressures)
+            max_pressure = max(pressures)
+            avg_pressure = sum(pressures) / len(pressures)
+        else:
+            min_pressure = None
+            max_pressure = None
+            avg_pressure = None
+    else:
+        min_pressure = None
+        max_pressure = None
+        avg_pressure = None
+
+    logger.info(f"Returning {len(data)} records with min: {min_pressure}, max: {max_pressure}, avg: {avg_pressure}")
+
+    return {
+        "data": data,
+        "summary": {
+            "min_pressure": min_pressure,
+            "max_pressure": max_pressure,
+            "avg_pressure": avg_pressure
+        }
+    }
+
+
 # To run the server, use the command: uvicorn main:app --reload 

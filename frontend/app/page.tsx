@@ -1,4 +1,4 @@
-"use client"; //komponenta se renderuje samo na klijentskoj strani
+"use client";
 import BarometerGraph from "./components/BarometerGraph/page";
 export default function Home() {
     return (

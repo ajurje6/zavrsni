@@ -1,5 +1,3 @@
-"use client"; // Ensures client-side rendering
-
 import { useEffect, useState } from "react";
 import axios from "axios";
 import dynamic from "next/dynamic";
@@ -15,10 +13,11 @@ import {
     Legend
 } from "chart.js";
 import "chartjs-adapter-date-fns"; // Import date adapter
+import BarometerTable from "../BarometerTable/page"; // Imports table component
 
 // Dynamically import LineChart to prevent SSR issues
 const LineChart = dynamic(() => import("react-chartjs-2").then((mod) => mod.Line), {
-    ssr: false, // Disable SSR
+    ssr: false,
 });
 
 // ✅ Register required components
@@ -26,7 +25,7 @@ ChartJS.register(
     LineElement,
     CategoryScale,
     LinearScale,
-    TimeScale, // <-- Important! Register the "time" scale
+    TimeScale,
     PointElement,
     Title,
     Tooltip,
@@ -37,25 +36,40 @@ export default function BarometerGraph() {
     const [chartData, setChartData] = useState<any>(null);
     const [isLoading, setIsLoading] = useState<boolean>(true);
     const [selectedDate, setSelectedDate] = useState<string>("2025-01-03");
+    const [minMaxAvgData, setMinMaxAvgData] = useState<any[]>([]); // Stores calculated summary data for multiple dates
 
-    useEffect(() => {
-        if (typeof window !== "undefined") {
-            import("chartjs-plugin-zoom").then((zoomPlugin) => {
-                ChartJS.register(zoomPlugin.default);
-            });
-        }
-    }, []);
-
+    // Fetch data for the selected date
     useEffect(() => {
         setIsLoading(true);
+
+        // Ensure the selected date is being correctly passed to the API
         axios.get(`http://127.0.0.1:8000/data?date=${selectedDate}`)
             .then((response) => {
                 const data = response.data.data;
+
+                // Check if there's data
                 if (data.length === 0) {
                     console.error("No data received from API.");
                     setIsLoading(false);
                     return;
                 }
+
+                // Calculate min, max, and avg for the selected date
+                const pressures = data.map((d: any) => d.pressure);
+                const minPressure = Math.min(...pressures);
+                const maxPressure = Math.max(...pressures);
+                const avgPressure = pressures.reduce((acc: number, pressure: number) => acc + pressure, 0) / pressures.length;
+
+                // Update the minMaxAvgData with the summary for the selected date
+                setMinMaxAvgData((prevData) => [
+                    ...prevData,
+                    {
+                        date: selectedDate,
+                        min_pressure: minPressure,
+                        max_pressure: maxPressure,
+                        avg_pressure: avgPressure,
+                    },
+                ]);
 
                 setChartData({
                     labels: data.map((d: any) => new Date(d.datetime).toISOString()),
@@ -73,7 +87,7 @@ export default function BarometerGraph() {
                 console.error("Error fetching data:", error);
                 setIsLoading(false);
             });
-    }, [selectedDate]);
+    }, [selectedDate]); // Trigger on selectedDate change
 
     const handleDateChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         setSelectedDate(event.target.value);
@@ -84,15 +98,15 @@ export default function BarometerGraph() {
         maintainAspectRatio: false,
         scales: {
             x: {
-                type: "time" as const, // ✅ Now it should work since TimeScale is registered
+                type: "time" as const,
                 time: {
                     unit: "minute" as const,
                     tooltipFormat: "yyyy-MM-dd HH:mm",
                     displayFormats: { minute: "yyyy-MM-dd HH:mm" },
                 },
-                ticks: { color: "white",autoSkip: false, maxRotation: 0, minRotation: 0, maxTicksLimit: 1000 },
+                ticks: { color: "white", autoSkip: false, maxRotation: 0, minRotation: 0, maxTicksLimit: 1000 },
             },
-            y: { type: "linear" as const, ticks: {color: "white", beginAtZero: false, autoSkip: true, maxTicksLimit: 10 } },
+            y: { type: "linear" as const, ticks: { color: "white", beginAtZero: false, autoSkip: true, maxTicksLimit: 10 } },
         },
         plugins: {
             legend: { position: "top" as const },
@@ -112,7 +126,6 @@ export default function BarometerGraph() {
                     type="date" 
                     value={selectedDate} 
                     onChange={handleDateChange}
-                    max="2025-03-04"
                     className="p-2 border rounded"
                 />
             </label>
@@ -127,8 +140,12 @@ export default function BarometerGraph() {
             ) : (
                 <p className="text-lg text-red-600">No data available for this date.</p>
             )}
+
+            {/* Pass calculated summary data to the table component */}
+            <BarometerTable data={minMaxAvgData} />
         </div>
     );
 }
+
 
 
