@@ -12,15 +12,15 @@ import {
     Tooltip,
     Legend
 } from "chart.js";
-import "chartjs-adapter-date-fns"; // Import date adapter
-import BarometerTable from "../BarometerTable/page"; // Imports table component
+import "chartjs-adapter-date-fns";
+import BarometerTable from "../BarometerTable/page"; 
 
 // Dynamically import LineChart to prevent SSR issues
 const LineChart = dynamic(() => import("react-chartjs-2").then((mod) => mod.Line), {
     ssr: false,
 });
 
-// ✅ Register required components
+ //Registers required components
 ChartJS.register(
     LineElement,
     CategoryScale,
@@ -38,7 +38,7 @@ export default function BarometerGraph() {
     const [selectedDate, setSelectedDate] = useState<string>("2025-01-03");
     const [minMaxAvgData, setMinMaxAvgData] = useState<any[]>([]); // Stores calculated summary data for multiple dates
 
-    // Fetch data for the selected date
+    // Fetches data for the selected date
     useEffect(() => {
         setIsLoading(true);
 
@@ -87,7 +87,7 @@ export default function BarometerGraph() {
                 console.error("Error fetching data:", error);
                 setIsLoading(false);
             });
-    }, [selectedDate]); // Trigger on selectedDate change
+    }, [selectedDate]); // Triggered on selectedDate change
 
     const handleDateChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         setSelectedDate(event.target.value);
@@ -141,7 +141,7 @@ export default function BarometerGraph() {
                 <p className="text-lg text-red-600">No data available for this date.</p>
             )}
 
-            {/* Pass calculated summary data to the table component */}
+            {/* Passes calculated summary data to the table component */}
             <BarometerTable data={minMaxAvgData} />
         </div>
     );
