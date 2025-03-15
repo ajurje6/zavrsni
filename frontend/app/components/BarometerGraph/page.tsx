@@ -48,22 +48,22 @@ export default function BarometerGraph() {
 
     useEffect(() => {
         setIsLoading(true);
-
+    
         axios.get(`http://127.0.0.1:8000/data?date=${selectedDate}`)
             .then((response) => {
                 const data = response.data.data;
-
+    
                 if (data.length === 0) {
                     console.error("No data received from API.");
                     setIsLoading(false);
                     return;
                 }
-
+    
                 const pressures = data.map((d: any) => d.pressure);
                 const minPressure = Math.min(...pressures);
                 const maxPressure = Math.max(...pressures);
-                const avgPressure = pressures.reduce((acc: number, pressure: number) => acc + pressure, 0) / pressures.length;
-
+                const avgPressure = (pressures.reduce((acc: number, pressure: number) => acc + pressure, 0) / pressures.length).toFixed(4); // Limiting to 4 decimals
+    
                 setMinMaxAvgData((prevData) => {
                     // Prevent duplicate dates in the table
                     if (!prevData.some(entry => entry.date === selectedDate)) {
@@ -73,13 +73,13 @@ export default function BarometerGraph() {
                                 date: selectedDate,
                                 min_pressure: minPressure,
                                 max_pressure: maxPressure,
-                                avg_pressure: avgPressure,
+                                avg_pressure: parseFloat(avgPressure), // Parse it back to number
                             },
                         ];
                     }
                     return prevData;
                 });
-
+    
                 setChartData({
                     labels: data.map((d: any) => new Date(d.datetime).toISOString()),
                     datasets: [{
@@ -89,7 +89,7 @@ export default function BarometerGraph() {
                         fill: false,
                     }],
                 });
-
+    
                 setIsLoading(false);
             })
             .catch((error) => {
@@ -162,8 +162,9 @@ export default function BarometerGraph() {
                 <p className="text-lg text-red-600">No data available for this date.</p>
             )}
 
-            <BarometerTable data={minMaxAvgData} />
+            <BarometerTable data={minMaxAvgData} setData={setMinMaxAvgData} />
         </div>
     );
 }
+
 

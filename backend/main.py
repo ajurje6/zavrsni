@@ -4,9 +4,12 @@ from fastapi import FastAPI, Query
 import pandas as pd
 import logging
 import asyncio
+from fastapi import Depends
 from crud import add_barometer_data
 from fastapi.middleware.cors import CORSMiddleware
-
+from database import get_db
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import func
 app = FastAPI()
 
 # Enables CORS for frontend
@@ -146,9 +149,56 @@ def get_data(date: str = Query(None, alias="date", description="Date to filter d
         }
     }
 
+@app.get("/stacked-graph")
+async def get_stacked_graph_data(
+    date: str = Query(None, alias="date", description="Date to filter data by (YYYY-MM-DD)"),
+    db: AsyncSession = Depends(get_db)
+):
+    try:
+        # Parse the date parameter if it's provided
+        if date:
+            try:
+                parsed_date = pd.to_datetime(date).date()  # Parse the date into a date object
+            except ValueError:
+                return {"error": "Invalid date format. Use YYYY-MM-DD."}
+        else:
+            parsed_date = None  # If no date is provided, fetch all data
+
+        # Constructing the query to fetch avg, min, and max pressure for each date
+        query = db.query(
+            func.date(BarometerData.datetime).label("date"),  # Group by date
+            func.avg(BarometerData.pressure).label("avg_pressure"),
+            func.min(BarometerData.pressure).label("min_pressure"),
+            func.max(BarometerData.pressure).label("max_pressure")
+        ).group_by(func.date(BarometerData.datetime))  # Group by the date
+
+        # Apply date filtering if a date is provided
+        if parsed_date:
+            query = query.filter(func.date(BarometerData.datetime) == parsed_date)
+
+        # Execute the query and fetch the results
+        result = await query.all()
+
+        # If no data is found
+        if not result:
+            logger.info("No data found for the selected date range.")
+            return {"error": "No data available for the selected date"}
+
+        # Prepare data for the stacked graph
+        stacked_graph_data = [
+            {"date": record.date, "avg_pressure": record.avg_pressure, "min_pressure": record.min_pressure, "max_pressure": record.max_pressure}
+            for record in result
+        ]
+
+        logger.info(f"Returning stacked graph data for {len(stacked_graph_data)} records.")
+        
+        return {"data": stacked_graph_data}
+
+    except Exception as e:
+        logger.error(f"Error fetching data for stacked graph: {e}")
+        return {"error": "Error fetching data for the stacked graph."}
 @app.on_event("startup")
 async def startup_event():
-    # This will run periodically or when triggered manually, rather than at startup
-    pass  # Don't trigger on startup now, it should be manually called or scheduled
+   pass  # Don't trigger on startup now, it should be manually called or scheduled
 
 # To run the server, use the command: uvicorn main:app --reload 
