@@ -64,22 +64,28 @@ export default function BarometerGraph() {
                 const maxPressure = Math.max(...pressures);
                 const avgPressure = pressures.reduce((acc: number, pressure: number) => acc + pressure, 0) / pressures.length;
 
-                setMinMaxAvgData((prevData) => [
-                    ...prevData,
-                    {
-                        date: selectedDate,
-                        min_pressure: minPressure,
-                        max_pressure: maxPressure,
-                        avg_pressure: avgPressure,
-                    },
-                ]);
+                setMinMaxAvgData((prevData) => {
+                    // Prevent duplicate dates in the table
+                    if (!prevData.some(entry => entry.date === selectedDate)) {
+                        return [
+                            ...prevData,
+                            {
+                                date: selectedDate,
+                                min_pressure: minPressure,
+                                max_pressure: maxPressure,
+                                avg_pressure: avgPressure,
+                            },
+                        ];
+                    }
+                    return prevData;
+                });
 
                 setChartData({
                     labels: data.map((d: any) => new Date(d.datetime).toISOString()),
                     datasets: [{
                         label: "Pressure (hPa)",
                         data: data.map((d: any) => d.pressure),
-                        borderColor: "blue",
+                        borderColor: "red",
                         fill: false,
                     }],
                 });
@@ -107,11 +113,11 @@ export default function BarometerGraph() {
                     tooltipFormat: "yyyy-MM-dd HH:mm",
                     displayFormats: { minute: "yyyy-MM-dd HH:mm" },
                 },
-                ticks: { color: "white", autoSkip: false, maxRotation: 0, minRotation: 0, maxTicksLimit: 1000 },
+                ticks: { color: "red", autoSkip: false, maxRotation: 0, minRotation: 0, maxTicksLimit: 1000 },
             },
             y: {
                 type: "linear" as const,
-                ticks: { color: "white", beginAtZero: false, autoSkip: true, maxTicksLimit: 10 },
+                ticks: { color: "red", beginAtZero: false, autoSkip: true, maxTicksLimit: 10 },
             },
         },
         plugins: {

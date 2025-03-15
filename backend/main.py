@@ -1,8 +1,11 @@
+import os
+import time
 from fastapi import FastAPI, Query
 import pandas as pd
-import os
-from fastapi.middleware.cors import CORSMiddleware
 import logging
+import asyncio
+from crud import add_barometer_data
+from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI()
 
@@ -18,6 +21,9 @@ app.add_middleware(
 # Configures logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+# Track last modified times of files
+last_modified_times = {}
 
 def parse_txt(file_path):
     try:
@@ -67,6 +73,32 @@ def parse_all_txt(folder_path):
                 logger.error(f"Error processing file {filename}: {e}")  # Logs the error
     return all_data
 
+
+async def store_data_in_db():
+    folder_path = "./data/bakar-mikrobarometar"
+    from database import AsyncSessionLocal
+
+    async with AsyncSessionLocal() as db:
+        for filename in os.listdir(folder_path):
+            if filename.endswith(".txt"):
+                file_path = os.path.join(folder_path, filename)
+
+                # Check if file was modified since last check
+                last_modified = os.path.getmtime(file_path)
+                if filename not in last_modified_times or last_modified_times[filename] != last_modified:
+                    last_modified_times[filename] = last_modified  # Update last modified time
+                    df = parse_txt(file_path)  # Your parsing function
+
+                    # Insert new/updated data into the database
+                    for _, row in df.iterrows():
+                        await add_barometer_data(db, row["datetime"], row["pressure"])
+
+                    logger.info(f"Data from {filename} stored in the database.")
+                else:
+                    logger.info(f"No changes detected in {filename}, skipping.")
+    
+    logger.info("Data storage complete.")
+
 @app.get("/data")
 def get_data(date: str = Query(None, alias="date", description="Date to filter data by (YYYY-MM-DD)")):
     folder_path = "./data/bakar-mikrobarometar"  # Folder where .txts are stored
@@ -85,9 +117,9 @@ def get_data(date: str = Query(None, alias="date", description="Date to filter d
     # Ensure the pressure values are treated as floats
     if data:
         pressures = [
-    float(entry["pressure"].strip("[]")) if isinstance(entry["pressure"], str) else float(entry["pressure"])
-    for entry in data if entry["pressure"] is not None
-]
+            float(entry["pressure"].strip("[]")) if isinstance(entry["pressure"], str) else float(entry["pressure"])
+            for entry in data if entry["pressure"] is not None
+        ]
 
         # Calculate min, max, and avg pressure
         if pressures:
@@ -114,5 +146,9 @@ def get_data(date: str = Query(None, alias="date", description="Date to filter d
         }
     }
 
+@app.on_event("startup")
+async def startup_event():
+    # This will run periodically or when triggered manually, rather than at startup
+    pass  # Don't trigger on startup now, it should be manually called or scheduled
 
 # To run the server, use the command: uvicorn main:app --reload 

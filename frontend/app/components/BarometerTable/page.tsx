@@ -1,8 +1,7 @@
 import { useState } from "react";
 import Papa from "papaparse";
 import { jsPDF } from "jspdf";
-import CSVIcon from "../../../public/csv.svg";
-import PDFIcon from "../../../public/pdf.svg";
+import Image from 'next/image';
 import autoTable from "jspdf-autotable";
 
 interface SummaryData {
@@ -77,14 +76,26 @@ export default function BarometerTable({ data }: BarometerTableProps) {
                     onClick={exportToCSV}
                     className="p-2 bg-green-500 text-white rounded mr-2 flex items-center hover:shadow-md hover:shadow-green-400 transition-normal"
                 >
-                    <img src={CSVIcon} alt="CSV Icon" className="w-5 h-5 mr-2" />
+                    <Image
+                    src="/csv.svg"
+                    alt="CSV Icon"
+                    width={20}
+                    height={20}
+                    className="mr-2"
+                />
                     Export to CSV
                 </button>
                 <button
                     onClick={exportToPDF}
                     className="p-2 bg-red-500 text-white rounded flex items-center hover:shadow-md hover:shadow-red-400 transition-normal"
                 >
-                    <img src={PDFIcon} alt="PDF Icon" className="w-5 h-5 mr-2" />
+                        <Image
+                    src="/pdf.svg"
+                    alt="PDF Icon"
+                    width={20}
+                    height={20}
+                    className="mr-2"
+                />
                     Export to PDF
                 </button>
             </div>
