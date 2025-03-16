@@ -55,6 +55,7 @@ export default function BarometerGraph() {
     
                 if (data.length === 0) {
                     console.error("No data received from API.");
+                    setChartData(null); // Explicitly set chartData to null when no data
                     setIsLoading(false);
                     return;
                 }
@@ -94,9 +95,11 @@ export default function BarometerGraph() {
             })
             .catch((error) => {
                 console.error("Error fetching data:", error);
+                setChartData(null); // Explicitly set chartData to null on error
                 setIsLoading(false);
             });
     }, [selectedDate]);
+    
 
     const handleDateChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         setSelectedDate(event.target.value);
