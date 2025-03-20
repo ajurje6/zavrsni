@@ -63,8 +63,7 @@ export default function BarometerGraph() {
                 const pressures = data.map((d: any) => d.pressure);
                 const minPressure = Math.min(...pressures);
                 const maxPressure = Math.max(...pressures);
-                const avgPressure = (pressures.reduce((acc: number, pressure: number) => acc + pressure, 0) / pressures.length).toFixed(4); // Limiting to 4 decimals
-    
+                const avgPressure = (pressures.reduce((acc: number, pressure: number) => acc + pressure, 0) / pressures.length).toFixed(4);
                 setMinMaxAvgData((prevData) => {
                     // Prevent duplicate dates in the table
                     if (!prevData.some(entry => entry.date === selectedDate)) {
@@ -74,7 +73,7 @@ export default function BarometerGraph() {
                                 date: selectedDate,
                                 min_pressure: minPressure,
                                 max_pressure: maxPressure,
-                                avg_pressure: parseFloat(avgPressure), // Parse it back to number
+                                avg_pressure: parseFloat(avgPressure), // Ensure it is a number
                             },
                         ];
                     }

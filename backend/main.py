@@ -88,12 +88,11 @@ async def store_data_in_db():
             if filename.endswith(".txt"):
                 file_path = os.path.join(folder_path, filename)
 
-                # Check if file was modified since last check
+                 # Check if file was modified since last check
                 last_modified = os.path.getmtime(file_path)
                 if filename not in last_modified_times or last_modified_times[filename] != last_modified:
                     last_modified_times[filename] = last_modified  # Update last modified time
                     df = parse_txt(file_path)  # Your parsing function
-
                     # Insert new/updated data into the database
                     for _, row in df.iterrows():
                         await add_barometer_data(db, row["datetime"], row["pressure"])
