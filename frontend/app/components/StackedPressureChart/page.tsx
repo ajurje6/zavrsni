@@ -6,7 +6,11 @@ import { useForm } from "react-hook-form";
 ChartJS.register(BarElement, CategoryScale, LinearScale, Tooltip, Legend);
 
 const StackedPressureChart = () => {
-  const { register, handleSubmit } = useForm<{ startDate: string; endDate: string }>();
+  const DEFAULT_DATE = "2025-01-03"; // Default date
+
+  const { register, handleSubmit } = useForm<{ startDate: string; endDate: string }>({
+    defaultValues: { startDate: DEFAULT_DATE, endDate: DEFAULT_DATE },
+  });
 
   interface DataEntry {
     date: string;
@@ -24,7 +28,12 @@ const StackedPressureChart = () => {
       .then((responseData) => {
         console.log("Fetched Data:", responseData);
         setData(responseData.data);
-        setFilteredData(responseData.data);
+
+        // Automatically filter for default date
+        const defaultFiltered = responseData.data.filter(
+          (entry: DataEntry) => entry.date === DEFAULT_DATE
+        );
+        setFilteredData(defaultFiltered);
       })
       .catch((error) => console.error("Error fetching data:", error));
   }, []);
@@ -48,39 +57,47 @@ const StackedPressureChart = () => {
       {
         label: "Min Pressure",
         data: filteredData.map((entry) => entry.min_pressure),
-        backgroundColor: "rgba(255, 99, 132, 0.8)", // Red with opacity
-        borderColor: "rgba(255, 99, 132, 1)",
+        backgroundColor: "red",
+        borderColor: "red",
         borderWidth: 1,
         stack: "pressure",
       },
       {
         label: "Avg Pressure",
         data: filteredData.map((entry) => entry.avg_pressure),
-        backgroundColor: "rgba(75, 192, 192, 0.8)", // Green with opacity
-        borderColor: "rgba(75, 192, 192, 1)",
+        backgroundColor: "blue",
+        borderColor: "blue",
         borderWidth: 1,
         stack: "pressure",
       },
       {
         label: "Max Pressure",
         data: filteredData.map((entry) => entry.max_pressure),
-        backgroundColor: "rgba(54, 162, 235, 0.8)", // Blue with opacity
-        borderColor: "rgba(54, 162, 235, 1)",
+        backgroundColor: "green",
+        borderColor: "green",
         borderWidth: 1,
         stack: "pressure",
       },
     ],
   };
-  
+
   const options = {
     responsive: true,
     maintainAspectRatio: false,
     scales: {
-      x: { 
-        stacked: true, 
-        ticks: { autoSkip: false } // Ensures all labels are shown
+      x: {
+        stacked: true,
+        ticks: {
+          autoSkip: false,
+          color: "red", // 🔴 Make x-axis dates red
+        },
       },
-      y: { stacked: true },
+      y: {
+        stacked: true,
+        ticks: {
+          color: "red", // 🔴 Make y-axis pressure values red
+        },
+      },
     },
     plugins: {
       tooltip: {
@@ -89,7 +106,7 @@ const StackedPressureChart = () => {
             const datasetIndex = tooltipItem.datasetIndex;
             const index = tooltipItem.dataIndex;
             const entry = filteredData[index];
-
+  
             if (datasetIndex === 0) return `Min: ${entry.min_pressure}`;
             if (datasetIndex === 1) return `Avg: ${entry.avg_pressure}`;
             if (datasetIndex === 2) return `Max: ${entry.max_pressure}`;
@@ -98,6 +115,11 @@ const StackedPressureChart = () => {
       },
     },
   };
+  
+
+  const baseWidthPerDate = 100; // Width per date in pixels
+  const minChartWidth = 400; // Minimum width
+  const dynamicChartWidth = Math.max(filteredData.length * baseWidthPerDate, minChartWidth);
 
   return (
     <div className="p-4 max-w-full mx-auto bg-white rounded-lg shadow-md">
@@ -121,8 +143,9 @@ const StackedPressureChart = () => {
         </button>
       </form>
 
-      <div className="w-full overflow-x-auto">
-        <div className="w-[2000px] h-[500px]">
+      {/* Center the chart dynamically */}
+      <div className="w-full flex justify-center">
+        <div className="h-[500px] min-w-[500px] mx-auto" style={{ width: `${dynamicChartWidth}px` }}>
           <Bar data={chartData} options={options} />
         </div>
       </div>

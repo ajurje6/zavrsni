@@ -85,6 +85,7 @@ export default function BarometerGraph() {
                     datasets: [{
                         label: "Pressure (hPa)",
                         data: data.map((d: any) => d.pressure),
+                        color: "red",
                         borderColor: "red",
                         fill: false,
                     }],
