@@ -1,6 +1,9 @@
 import os
 import time
 from fastapi import FastAPI, Query
+from datetime import datetime, timedelta
+import aiohttp
+import requests
 import pandas as pd
 import logging
 import asyncio
@@ -29,7 +32,78 @@ logger = logging.getLogger(__name__)
 
 # Track last modified times of files
 last_modified_times = {}
+BASE_URL = "https://meteo777.pythonanywhere.com/sodar/data/"
+#SODAR
+def safe_float(value):
+    try:
+        return float(value)
+    except ValueError:
+        return None  # Return None or any default value you prefer
 
+# Fetch SODAR data within the specified date range
+async def fetch_sodar_data(start_date, end_date):
+    all_data = []
+    current_date = start_date
+
+    # Create a session for aiohttp
+    async with aiohttp.ClientSession() as session:
+        # List of tasks for concurrent fetching
+        tasks = []
+
+        # Loop through dates from start_date to end_date
+        while current_date <= end_date:
+            yymmdd = current_date.strftime("%y%m%d")
+            url = f"{BASE_URL}{yymmdd}.txt"
+
+            # Create an asynchronous request task
+            tasks.append(fetch_data_for_date(session, url, all_data))
+
+            # Move to the next day
+            current_date += timedelta(days=1)
+
+        # Run all tasks concurrently
+        await asyncio.gather(*tasks)
+
+    print(f"Total entries collected: {len(all_data)}")  # Debug output
+    return all_data
+
+# Fetch data for a specific date
+async def fetch_data_for_date(session, url, all_data):
+    try:
+        async with session.get(url) as response:
+            print(f"Fetching {url}...")
+            print(f"Response status: {response.status}")
+
+            if response.status == 200:
+                text = await response.text()
+                lines = text.splitlines()
+                header_found = False
+
+                for line in lines:
+                    if "time" in line and "z" in line:
+                        header_found = True
+                        continue
+
+                    if header_found:
+                        parts = line.split()
+                        if len(parts) >= 4:
+                            all_data.append({
+                                "time": f"{parts[0]} {parts[1]}",  # Date + Time
+                                "height": safe_float(parts[2]),  # Height
+                                "speed": safe_float(parts[3]),  # Wind Speed
+                                "direction": safe_float(parts[4]),  # Wind Direction
+                            })
+    except Exception as e:
+        print(f"Failed to fetch {url}: {e}")
+
+@app.get("/sodar-data")
+async def get_sodar_data():
+    start_date = datetime(2025, 1, 3)  # Start date: 2025-01-03
+    end_date = datetime(2025, 3, 4)  # End date: 2025-03-04
+    data = await fetch_sodar_data(start_date, end_date)
+    return data
+
+#BAROMETER
 def parse_txt(file_path):
     try:
         # Tries to read the file assuming that the values are separated by spaces
