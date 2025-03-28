@@ -84,21 +84,6 @@ const StackedPressureChart = () => {
   const options = {
     responsive: true,
     maintainAspectRatio: false,
-    scales: {
-      x: {
-        stacked: true,
-        ticks: {
-          autoSkip: false,
-          color: "red", // 🔴 Make x-axis dates red
-        },
-      },
-      y: {
-        stacked: true,
-        ticks: {
-          color: "red", // 🔴 Make y-axis pressure values red
-        },
-      },
-    },
     plugins: {
       tooltip: {
         callbacks: {

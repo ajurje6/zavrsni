@@ -1,11 +1,11 @@
 import Navbar from "../components/Navbar/page";
-import WindSpeedGraph from "../components/WindSpeedGraph/page";
+import WeatherDashboard from "../components/WeatherDashboard/page";
 
 export default function Sodar(){
     return(
         <main>
             <Navbar/>
-            <WindSpeedGraph/>
+            <WeatherDashboard/>
         </main>
     );
 }

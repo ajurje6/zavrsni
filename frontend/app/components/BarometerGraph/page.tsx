@@ -87,7 +87,7 @@ export default function BarometerGraph() {
                         data: data.map((d: any) => d.pressure),
                         backgroundcolor: "red",
                         borderColor: "red",
-                        fill: false,
+                        fill: true,
                     }],
                 });
     
@@ -116,11 +116,11 @@ export default function BarometerGraph() {
                     tooltipFormat: "yyyy-MM-dd HH:mm",
                     displayFormats: { minute: "yyyy-MM-dd HH:mm" },
                 },
-                ticks: { color: "red", autoSkip: false, maxRotation: 0, minRotation: 0, maxTicksLimit: 1000 },
+                ticks: {autoSkip: false, maxRotation: 0, minRotation: 0, maxTicksLimit: 1000 },
             },
             y: {
                 type: "linear" as const,
-                ticks: { color: "red", beginAtZero: false, autoSkip: true, maxTicksLimit: 10 },
+                ticks: {beginAtZero: false, autoSkip: true, maxTicksLimit: 10 },
             },
         },
         plugins: {
