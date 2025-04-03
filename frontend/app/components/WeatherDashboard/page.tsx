@@ -18,12 +18,12 @@ const WeatherDashboard = () => {
     try {
       const response = await axios.get("http://127.0.0.1:8000/sodar-data");
       const rawData = response.data;
-
-      // Filter by selected date
-      const filteredData = rawData.filter((entry: any) => 
-        dayjs(entry.time).format("YYYY-MM-DD") === date
-      );
-
+  
+      // Filter by selected date and remove entries with "*"
+      const filteredData = rawData
+        .filter((entry: any) => dayjs(entry.time).format("YYYY-MM-DD") === date)
+        .filter((entry: any) => !Object.values(entry).includes("*")); // Remove any entry that contains "*"
+  
       if (filteredData.length === 0) {
         setWeatherData(null);
         setNoData(true);
@@ -36,10 +36,10 @@ const WeatherDashboard = () => {
       setIsLoading(false);
     }
   };
-
+  
   useEffect(() => {
     fetchData(selectedDate);
-  }, [selectedDate]);
+  }, [selectedDate]);  
 
   return (
     <div className="p-4 bg-white text-black rounded-lg">
@@ -76,5 +76,4 @@ const WeatherDashboard = () => {
 </div>
   );
 };
-
 export default WeatherDashboard;
