@@ -1,5 +1,4 @@
-"use client"; // Ensures this runs only on the client
-
+"use client"; 
 import { useState, useEffect } from "react";
 import Papa from "papaparse";
 import { jsPDF } from "jspdf";

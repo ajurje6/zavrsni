@@ -154,7 +154,7 @@ export default function BarometerGraph() {
                 />
             </label>
             {isLoading ? (
-                <p className="text-lg text-gray-600">Loading...</p>
+                <p className="text-xl text-center">Loading data for {selectedDate}</p>
             ) : chartData ? (
                 <div className="w-full overflow-x-auto mt-5 max-w-full">
                     <div className="min-w-[2000px] h-[700px]">

@@ -5,6 +5,7 @@ import dayjs from "dayjs";
 import WindSpeedGraph from "../WindSpeedGraph/page";
 import WindDirectionGraph from "../WindDirectionGraph/page";
 import SpeedHeightBarChart from "../SpeedHeightBarChart/page";
+import WindSummaryTable from "../WindSummaryTable/page";
 
 const WeatherDashboard = () => {
   const [selectedDate, setSelectedDate] = useState("2025-01-03"); // Default date
@@ -60,7 +61,7 @@ const WeatherDashboard = () => {
   </div>
 
   {/* Loading Message */}
-  {isLoading && <p className="text-center">Loading data for {selectedDate}...</p>}
+  {isLoading && <p className="text-center text-xl">Loading data for {selectedDate}...</p>}
 
   {/* No Data Message */}
   {noData && !isLoading && <p className="text-center">No data available for {selectedDate}.</p>}

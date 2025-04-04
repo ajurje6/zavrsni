@@ -103,6 +103,69 @@ async def get_sodar_data():
     data = await fetch_sodar_data(start_date, end_date)
     return data
 
+@app.get("/sodar-summary")
+async def get_sodar_summary():
+    start_date = datetime(2025, 1, 3)
+    end_date = datetime(2025, 3, 4)
+    raw_data = await fetch_sodar_data(start_date, end_date)
+
+    # Group data by date
+    grouped = {}
+    for entry in raw_data:
+        date_str = entry["time"].split(" ")[0]
+        speed = entry.get("speed")
+        direction = entry.get("direction")
+
+        # Skip invalid entries (non-numeric values)
+        try:
+            speed = float(speed)
+            direction = float(direction)
+        except (ValueError, TypeError):
+            continue
+
+        grouped.setdefault(date_str, []).append({"speed": speed, "direction": direction})
+
+    # Generate full date range from start_date to end_date
+    all_dates = []
+    current = start_date
+    while current <= end_date:
+        all_dates.append(current.strftime("%Y-%m-%d"))
+        current += timedelta(days=1)
+
+    summary = []
+    for date in all_dates:
+        entries = grouped.get(date, [])
+        
+        # Handle case where no valid data exists for this date
+        if entries:
+            speeds = [e["speed"] for e in entries]
+            directions = [e["direction"] for e in entries]
+
+            summary.append({
+                "date": date,
+                "max_speed": max(speeds),
+                "min_speed": min(speeds),
+                "avg_speed": sum(speeds) / len(speeds),
+                "avg_direction": sum(directions) / len(directions),
+            })
+        else:
+            # If no valid data for this date, use None for the stats
+            summary.append({
+                "date": date,
+                "max_speed": None,
+                "min_speed": None,
+                "avg_speed": None,
+                "avg_direction": None,
+            })
+
+    # Sort by date in ascending order
+    summary.sort(key=lambda x: x["date"])
+
+    return {
+        "data": summary,
+    }
+
+
 #BAROMETER
 def parse_txt(file_path):
     try:
