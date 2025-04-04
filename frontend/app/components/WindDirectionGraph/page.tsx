@@ -62,7 +62,7 @@ const WindDirectionGraph = ({ data }: { data: any }) => {
 
   return (
     <div className="p-4 bg-white text-black rounded-lg">
-      <h2 className="text-lg font-bold mb-2">Wind Direction Over Time</h2>
+      <h2 className="text-xl font-bold mb-2">Wind Direction Over Time</h2>
       {chartData ? (
         <Line
           data={chartData}
@@ -83,6 +83,9 @@ const WindDirectionGraph = ({ data }: { data: any }) => {
                 title: {
                   display: true,
                   text: "Wind Direction (°)",
+                  font:{
+                    size:16,
+                  }
                 },
                 ticks: {
                   callback: (value) => getCompassDirection(value as number), // Converts Y-axis labels
@@ -92,6 +95,9 @@ const WindDirectionGraph = ({ data }: { data: any }) => {
                 title: {
                   display: true,
                   text: "Time",
+                  font:{
+                    size:16,
+                  }
                 },
               },
             },

@@ -1,6 +1,15 @@
 "use client";
 import { Line } from "react-chartjs-2";
-import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend } from "chart.js";
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend,
+} from "chart.js";
 import { useEffect, useState } from "react";
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend);
@@ -14,7 +23,6 @@ const WindSpeedGraph = ({ data }: { data: any }) => {
       return;
     }
 
-    // Group wind speed readings by time and calculate the average per time period
     const groupedData: Record<string, number[]> = {};
     data.forEach((entry: any) => {
       if (!groupedData[entry.time]) {
@@ -28,7 +36,6 @@ const WindSpeedGraph = ({ data }: { data: any }) => {
       return { time, avgSpeed: parseFloat(avgSpeed.toFixed(2)) };
     });
 
-    // Extract unique times and averaged wind speeds
     const labels = averagedData.map((entry) => entry.time);
     const avgSpeeds = averagedData.map((entry) => entry.avgSpeed);
 
@@ -38,23 +45,53 @@ const WindSpeedGraph = ({ data }: { data: any }) => {
         {
           label: "Average Wind Speed (m/s)",
           data: avgSpeeds,
-          borderColor: "rgba(255, 0, 0, 1)", // RED LINE
-          backgroundColor: "rgba(255, 0, 0, 0.2)", // LIGHT RED FILL
+          borderColor: "rgba(255, 0, 0, 1)",
+          backgroundColor: "rgba(255, 0, 0, 0.2)",
           tension: 0.3,
         },
       ],
     });
   }, [data]);
 
+  const options = {
+    responsive: true,
+    plugins: {
+      legend: {
+        position: "top" as const,
+      },
+    },
+    scales: {
+      x: {
+        title: {
+          display: true,
+          text: "Time",
+          font: {
+            size: 16,
+          },
+        },
+      },
+      y: {
+        title: {
+          display: true,
+          text: "Wind Speed (m/s)",
+          font: {
+            size: 16,
+          },
+        },
+      },
+    },
+  };
+
   return (
     <div className="p-4">
-      <h2 className="text-lg font-bold mb-2">Wind Speed Over Time</h2>
-      {chartData ? <Line data={chartData} /> : <p>No data available.</p>}
+      <h2 className="text-xl font-bold mb-2">Wind Speed Over Time</h2>
+      {chartData ? <Line data={chartData} options={options} /> : <p>No data available.</p>}
     </div>
   );
 };
 
 export default WindSpeedGraph;
+
 
 
 

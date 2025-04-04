@@ -1,4 +1,4 @@
-"use client"
+"use client";
 import { useEffect, useState } from "react";
 import axios from "axios";
 import dynamic from "next/dynamic";
@@ -14,7 +14,6 @@ import {
     Legend
 } from "chart.js";
 import "chartjs-adapter-date-fns";
-import BarometerTable from "../BarometerTable/page";
 
 // Dynamically import LineChart to prevent SSR issues
 const LineChart = dynamic(() => import("react-chartjs-2").then((mod) => mod.Line), {
@@ -109,41 +108,67 @@ export default function BarometerGraph() {
         responsive: true,
         maintainAspectRatio: false,
         scales: {
-            x: {
-                type: "time" as const,
-                time: {
-                    unit: "minute" as const,
-                    tooltipFormat: "yyyy-MM-dd HH:mm",
-                    displayFormats: { minute: "yyyy-MM-dd HH:mm" },
-                },
-                ticks: {autoSkip: false, maxRotation: 0, minRotation: 0, maxTicksLimit: 1000 },
+          x: {
+            type: "time" as const,
+            time: {
+              unit: "minute" as const,
+              tooltipFormat: "yyyy-MM-dd HH:mm",
+              displayFormats: { minute: "yyyy-MM-dd HH:mm" },
             },
-            y: {
-                type: "linear" as const,
-                ticks: {beginAtZero: false, autoSkip: true, maxTicksLimit: 10 },
+            ticks: {
+              autoSkip: false,
+              maxRotation: 0,
+              minRotation: 0,
+              maxTicksLimit: 1000,
             },
+            title: {
+              display: true,
+              text: "Time",
+              font: {
+                size: 16,
+              },
+            },
+          },
+          y: {
+            type: "linear" as const,
+            ticks: {
+              beginAtZero: false,
+              autoSkip: true,
+              maxTicksLimit: 10,
+            },
+            title: {
+              display: true,
+              text: "Pressure (hPa)",
+              font: {
+                size: 16,
+              },
+            },
+          },
         },
         plugins: {
-            legend: { position: "top" as const },
-            zoom: {
-                pan: {
-                    enabled: true,        // Enables panning
-                    mode: "xy" as const,  // Allows panning both horizontally and vertically
-                },
-                zoom: {
-                    enabled: true,        // Enables zooming
-                    mode: "xy" as const,  // Allows zooming both horizontally and vertically
-                    speed: 0.1,           // Sets the zooming speed
-                    threshold: 10,        // Sets the threshold for zooming
-                },
+          legend: { position: "top" as const },
+          zoom: {
+            pan: {
+              enabled: true,
+              mode: "xy" as const,
             },
+            zoom: {
+              enabled: true,
+              mode: "xy" as const,
+              speed: 0.1,
+              threshold: 10,
+            },
+          },
         },
-    };
-    
+      };
+      
 
     return (
         <div className="flex flex-col items-center p-6">
+            {/* Title for Barometer Data Visualization */}
             <h1 className="text-3xl font-semibold mb-4">Barometer Data Visualization</h1>
+
+            {/* Date Picker */}
             <label className="mb-4">
                 <span className="mr-2">Select Date:</span>
                 <input 
@@ -153,6 +178,11 @@ export default function BarometerGraph() {
                     className="p-2 border rounded"
                 />
             </label>
+
+            {/* Title for Pressure Over Time */}
+            <h2 className="text-xl font-bold mb-2 self-start">Pressure Over Time</h2> {/* Aligned to the left */}
+
+            {/* Loading or Chart Display */}
             {isLoading ? (
                 <p className="text-xl text-center">Loading data for {selectedDate}</p>
             ) : chartData ? (
@@ -164,11 +194,11 @@ export default function BarometerGraph() {
             ) : (
                 <p className="text-lg text-red-600">No data available for this date.</p>
             )}
-
-            <BarometerTable data={minMaxAvgData} setData={setMinMaxAvgData} />
         </div>
     );
 }
+
+
 
 
 

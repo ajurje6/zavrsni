@@ -99,6 +99,29 @@ const StackedPressureChart = () => {
           },
         },
       },
+      legend: {
+        position: 'top' as const,
+      },
+    },
+    scales: {
+      x: {
+        title: {
+          display: true,
+          text: "Date",
+          font: {
+            size: 16,
+          },
+        },
+      },
+      y: {
+        title: {
+          display: true,
+          text: "Pressure (hPa)",
+          font: {
+            size: 16,
+          },
+        },
+      },
     },
   };
   
@@ -109,6 +132,9 @@ const StackedPressureChart = () => {
 
   return (
     <div className="p-4 max-w-full mx-auto bg-white rounded-lg shadow-md">
+      {/* Title for "Pressure Over Time" */}
+      <h2 className="text-xl font-bold mb-2 self-start">Pressure stack chart</h2>
+
       <form
         onSubmit={handleSubmit(onSubmit)}
         className="mb-4 flex flex-col sm:flex-row sm:items-end gap-4"

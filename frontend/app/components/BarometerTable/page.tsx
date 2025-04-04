@@ -1,10 +1,11 @@
-"use client"; 
+"use client";
 import { useState, useEffect } from "react";
 import Papa from "papaparse";
-import { jsPDF } from "jspdf";
-import Image from "next/image";
+import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import Image from "next/image";
 
+// Interface for the summary data
 interface SummaryData {
     date: string;
     min_pressure: number;
@@ -12,134 +13,142 @@ interface SummaryData {
     avg_pressure: number;
 }
 
-interface BarometerTableProps {
-    data: SummaryData[];
-    setData: React.Dispatch<React.SetStateAction<SummaryData[]>>;
-}
-
-export default function BarometerTable({ data, setData }: BarometerTableProps) {
-    const [mounted, setMounted] = useState(false);
-    const [clientData, setClientData] = useState<SummaryData[]>([]);
-    const [currentPage, setCurrentPage] = useState<number>(1);
-    const itemsPerPage = 5;
+export default function BarometerTable() {
+    const [data, setData] = useState<SummaryData[]>([]);
+    const [currentPage, setCurrentPage] = useState(1);
+    const [selectedMonth, setSelectedMonth] = useState<number | null>(null);
+    const pageSize = 10;
 
     useEffect(() => {
-        setMounted(true); // Ensures the component is mounted before rendering data
-        setClientData(data); // Only update data on the client side
-    }, [data]);
+        const fetchData = async () => {
+            const res = await fetch("http://127.0.0.1:8000/stacked-graph");
+            const json = await res.json();
+            setData(json.data);
+        };
 
-    // Prevent SSR mismatch by rendering a loading state initially
-    if (!mounted) {
-        return <p>Loading...</p>;
-    }
+        fetchData();
+    }, []);
 
-    // Calculate pagination
-    const totalPages = Math.ceil(clientData.length / itemsPerPage);
-    const paginatedData = clientData.slice(
-        (currentPage - 1) * itemsPerPage,
-        currentPage * itemsPerPage
-    );
+    // Sort data by date
+    const sortedData = [...data].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
-    // Export to CSV function
-    const exportToCSV = () => {
-        const csv = Papa.unparse(clientData);
-        const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-        const link = document.createElement("a");
-        link.href = URL.createObjectURL(blob);
-        link.download = "barometer_summary.csv";
-        link.click();
+    // Filter data based on selected month
+    const filteredData = selectedMonth !== null
+        ? sortedData.filter((entry) => {
+            const entryDate = new Date(entry.date);
+            return entryDate.getMonth() === selectedMonth;
+        })
+        : sortedData;
+
+    // Pagination
+    const offset = (currentPage - 1) * pageSize;
+    const currentPageData = filteredData.slice(offset, offset + pageSize);
+    const totalPages = Math.ceil(filteredData.length / pageSize);
+
+    const handlePageClick = (page: number) => {
+        setCurrentPage(page);
     };
 
-    // Export to PDF function
+    const handleMonthChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
+        setSelectedMonth(event.target.value ? Number(event.target.value) : null);
+        setCurrentPage(1); // Reset to first page when month changes
+    };
+
+    // Export to CSV
+    const exportToCSV = () => {
+        const csv = Papa.unparse(filteredData);
+        const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "barometer_summary.csv";
+        a.click();
+    };
+
+    // Export to PDF
     const exportToPDF = () => {
         const doc = new jsPDF();
-
-        doc.setFontSize(18);
-        doc.text("Barometer Daily Summary", 20, 20);
-
-        const headers = ["Date", "Min Pressure (hPa)", "Max Pressure (hPa)", "Avg Pressure (hPa)"];
-        const rows = paginatedData.map((item) => [
-            item.date,
-            item.min_pressure,
-            item.max_pressure,
-            item.avg_pressure,
-        ]);
-
         autoTable(doc, {
-            head: [headers],
-            body: rows,
-            startY: 30,
+            head: [["Date", "Min Pressure (hPa)", "Max Pressure (hPa)", "Avg Pressure (hPa)"]],
+            body: filteredData.map((entry) => [
+                entry.date,
+                entry.min_pressure.toFixed(2),
+                entry.max_pressure.toFixed(2),
+                entry.avg_pressure.toFixed(2),
+            ]),
         });
-
         doc.save("barometer_summary.pdf");
     };
 
-    // Delete row function
-    const deleteRow = (date: string) => {
-        const updatedData = clientData.filter((item) => item.date !== date);
-        setClientData(updatedData); // Updates client-side state
-        setData(updatedData); // Updates the parent state as well
-    };
-
     return (
-        <div className="w-full max-w-2xl mt-6">
-            <h2 className="text-xl font-semibold mb-3">Daily Summary</h2>
+        <div className="p-4">
+            <div className="flex flex-col items-center mb-4">
+                <h2 className="text-xl font-bold mb-2">Barometer Summary Table</h2>
 
-            {/* Export Buttons */}
-            <div className="mb-4 flex">
-                <button
-                    onClick={exportToCSV}
-                    className="p-2 bg-green-500 text-white rounded mr-2 flex items-center hover:shadow-md hover:shadow-green-400 transition-normal"
-                >
-                    <Image src="/csv.svg" alt="CSV Icon" width={20} height={20} className="mr-2" />
-                    Export to CSV
-                </button>
-                <button
-                    onClick={exportToPDF}
-                    className="p-2 bg-red-500 text-white rounded flex items-center hover:shadow-md hover:shadow-red-400 transition-normal"
-                >
-                    <Image src="/pdf.svg" alt="PDF Icon" width={20} height={20} className="mr-2" />
-                    Export to PDF
-                </button>
+                {/* Dropdown for Month Selection */}
+                <div className="mb-4">
+                    <select
+                        onChange={handleMonthChange}
+                        value={selectedMonth !== null ? selectedMonth : ""}
+                        className="p-2 border rounded"
+                    >
+                        <option value="">Select Month</option>
+                        {["January", "February", "March"].map((month, index) => (
+                            <option key={index} value={index}>
+                                {month}
+                            </option>
+                        ))}
+                    </select>
+                </div>
+
+                {/* Buttons for Export */}
+                <div className="flex space-x-4 mb-4">
+                    <button
+                        onClick={exportToCSV}
+                        className="p-2 bg-green-500 text-white rounded flex items-center hover:shadow-md hover:shadow-green-400 transition-normal"
+                    >
+                        <Image src="/csv.svg" alt="CSV Icon" width={20} height={20} className="mr-2" />
+                        Export to CSV
+                    </button>
+                    <button
+                        onClick={exportToPDF}
+                        className="p-2 bg-red-500 text-white rounded flex items-center hover:shadow-md hover:shadow-red-400 transition-normal"
+                    >
+                        <Image src="/pdf.svg" alt="PDF Icon" width={20} height={20} className="mr-2" />
+                        Export to PDF
+                    </button>
+                </div>
             </div>
 
             {/* Table */}
-            <table className="w-full border-collapse border border-white">
-                <thead>
-                    <tr className="bg-wghite">
-                        <th className="border p-2  text-red-500 hover:text-red-700">Date</th>
-                        <th className="border p-2  text-red-500 hover:text-red-700">Min Pressure (hPa)</th>
-                        <th className="border p-2  text-red-500 hover:text-red-700">Max Pressure (hPa)</th>
-                        <th className="border p-2  text-red-500 hover:text-red-700">Avg Pressure (hPa)</th>
+            <table className="w-full border border-gray-300">
+                <thead className="bg-gray-100">
+                    <tr>
+                        <th className="border px-2 py-1">Date</th>
+                        <th className="border px-2 py-1">Min Pressure (hPa)</th>
+                        <th className="border px-2 py-1">Max Pressure (hPa)</th>
+                        <th className="border px-2 py-1">Avg Pressure (hPa)</th>
                     </tr>
                 </thead>
                 <tbody>
-                 {paginatedData.map((item, index) => (
-                 <tr key={`${item.date}-${index}`} className="text-center">
-                    <td className="border p-2 text-red-500">{item.date}</td>
-                    <td className="border p-2 text-red-500">{item.min_pressure}</td>
-                    <td className="border p-2 text-red-500">{item.max_pressure}</td>
-                    <td className="border p-2 text-red-500">{item.avg_pressure}</td>
-                    <td className="p-2">
-                <button
-                    onClick={() => deleteRow(item.date)}
-                    className="text-red-500 hover:text-red-700"
-                >
-                    <Image src="delete.svg" alt="Delete Icon" width={15} height={15} />
-                </button>
-                    </td>
-                </tr>
-                     ))}
-            </tbody>
-        </table>
+                    {currentPageData.map((entry) => (
+                        <tr key={entry.date}>
+                            <td className="border px-2 py-1">{entry.date}</td>
+                            <td className="border px-2 py-1">{entry.min_pressure}</td>
+                            <td className="border px-2 py-1">{entry.max_pressure}</td>
+                            <td className="border px-2 py-1">{entry.avg_pressure}</td>
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
 
             {/* Pagination */}
-            <div className="mt-3">
-                {Array.from({ length: totalPages }, (_, i) => (
+            <div className="mt-4 flex justify-center space-x-2">
+                {[...Array(totalPages)].map((_, i) => (
                     <button
                         key={i}
-                        className={`mx-1 p-2 border ${currentPage === i + 1 ? "bg-red-500 text-white" : "bg-white"}`}
-                        onClick={() => setCurrentPage(i + 1)}
+                        className={`px-3 py-1 border rounded ${currentPage === i + 1 ? "bg-red-500 text-white" : ""}`}
+                        onClick={() => handlePageClick(i + 1)}
                     >
                         {i + 1}
                     </button>

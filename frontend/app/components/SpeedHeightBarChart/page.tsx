@@ -52,7 +52,7 @@ const SpeedHeightBarChart = ({ data }: SpeedHeightBarChartProps) => {
               text: 'Average Wind Speed by Height',
               color: 'black',
               font: {
-                size: 18,
+                size: 20,
                 weight: 'bold',
                 family: 'Arial',
               },
@@ -68,12 +68,18 @@ const SpeedHeightBarChart = ({ data }: SpeedHeightBarChartProps) => {
               title: {
                 display: true,
                 text: 'Height (m)',
+                font:{
+                  size:16,
+                }
               },
             },
             y: {
               title: {
                 display: true,
                 text: 'Wind Speed (m/s)',
+                font:{
+                  size:16,
+                }
               },
               beginAtZero: true,
             },
