@@ -131,7 +131,7 @@ const StackedPressureChart = () => {
   const dynamicChartWidth = Math.max(filteredData.length * baseWidthPerDate, minChartWidth);
 
   return (
-    <div className="p-4 max-w-full mx-auto bg-white rounded-lg shadow-md">
+    <div className="p-4 max-w-full mx-auto">
       {/* Title for "Pressure Over Time" */}
       <h2 className="text-xl font-bold mb-2 self-start">Pressure stack chart</h2>
 

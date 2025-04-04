@@ -82,78 +82,88 @@ export default function BarometerTable() {
 
     return (
         <div className="p-4">
-            <div className="flex flex-col items-center mb-4">
-                <h2 className="text-xl font-bold mb-2">Barometer Summary Table</h2>
-
-                {/* Dropdown for Month Selection */}
-                <div className="mb-4">
-                    <select
-                        onChange={handleMonthChange}
-                        value={selectedMonth !== null ? selectedMonth : ""}
-                        className="p-2 border rounded"
-                    >
-                        <option value="">Select Month</option>
-                        {["January", "February", "March"].map((month, index) => (
-                            <option key={index} value={index}>
-                                {month}
-                            </option>
-                        ))}
-                    </select>
-                </div>
-
-                {/* Buttons for Export */}
-                <div className="flex space-x-4 mb-4">
-                    <button
-                        onClick={exportToCSV}
-                        className="p-2 bg-green-500 text-white rounded flex items-center hover:shadow-md hover:shadow-green-400 transition-normal"
-                    >
-                        <Image src="/csv.svg" alt="CSV Icon" width={20} height={20} className="mr-2" />
-                        Export to CSV
-                    </button>
-                    <button
-                        onClick={exportToPDF}
-                        className="p-2 bg-red-500 text-white rounded flex items-center hover:shadow-md hover:shadow-red-400 transition-normal"
-                    >
-                        <Image src="/pdf.svg" alt="PDF Icon" width={20} height={20} className="mr-2" />
-                        Export to PDF
-                    </button>
-                </div>
+          {/* Content goes here */}
+          <div className="flex flex-col items-center mb-4">
+            <h2 className="text-xl font-bold mb-2">Barometer Summary Table</h2>
+      
+            {/* Dropdown for Month Selection */}
+            <div className="mb-4">
+              <select
+                onChange={handleMonthChange}
+                value={selectedMonth !== null ? selectedMonth : ""}
+                className="p-2 border rounded"
+              >
+                <option value="">Select Month</option>
+                {["January", "February", "March"].map((month, index) => (
+                  <option key={index} value={index}>
+                    {month}
+                  </option>
+                ))}
+              </select>
             </div>
-
-            {/* Table */}
-            <table className="w-full border border-gray-300">
-                <thead className="bg-gray-100">
-                    <tr>
-                        <th className="border px-2 py-1">Date</th>
-                        <th className="border px-2 py-1">Min Pressure (hPa)</th>
-                        <th className="border px-2 py-1">Max Pressure (hPa)</th>
-                        <th className="border px-2 py-1">Avg Pressure (hPa)</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {currentPageData.map((entry) => (
-                        <tr key={entry.date}>
-                            <td className="border px-2 py-1">{entry.date}</td>
-                            <td className="border px-2 py-1">{entry.min_pressure}</td>
-                            <td className="border px-2 py-1">{entry.max_pressure}</td>
-                            <td className="border px-2 py-1">{entry.avg_pressure}</td>
-                        </tr>
-                    ))}
-                </tbody>
+      
+            {/* Buttons for Export */}
+            <div className="flex space-x-4 mb-4">
+              <button
+                onClick={exportToCSV}
+                className="p-2 bg-green-500 text-white rounded flex items-center hover:shadow-md hover:shadow-green-400 transition-normal"
+              >
+                <Image src="/csv.svg" alt="CSV Icon" width={20} height={20} className="mr-2" />
+                Export to CSV
+              </button>
+              <button
+                onClick={exportToPDF}
+                className="p-2 bg-red-500 text-white rounded flex items-center hover:shadow-md hover:shadow-red-400 transition-normal"
+              >
+                <Image src="/pdf.svg" alt="PDF Icon" width={20} height={20} className="mr-2" />
+                Export to PDF
+              </button>
+            </div>
+          </div>
+      
+          {/* Table */}
+          <div className="relative overflow-x-auto shadow-md sm:rounded-lg">
+            <table className="w-full text-sm text-left text-white bg-gradient-to-b from-red-200 via-red-400 to-red-600 rounded-lg overflow-hidden">
+              <thead className="text-xs text-white uppercase bg-red-400">
+                <tr>
+                  <th className="px-6 py-3">Date</th>
+                  <th className="px-6 py-3">Min Pressure (hPa)</th>
+                  <th className="px-6 py-3">Max Pressure (hPa)</th>
+                  <th className="px-6 py-3">Avg Pressure (hPa)</th>
+                </tr>
+              </thead>
+              <tbody>
+                {currentPageData.map((entry) => (
+                  <tr
+                    key={entry.date}
+                    className="border-b border-red-400 hover:bg-red-600 transition"
+                  >
+                    <td className="px-6 py-4 font-medium text-white">{entry.date}</td>
+                    <td className="px-6 py-4">{entry.min_pressure}</td>
+                    <td className="px-6 py-4">{entry.max_pressure}</td>
+                    <td className="px-6 py-4">{entry.avg_pressure.toFixed(2)}</td>
+                  </tr>
+                ))}
+              </tbody>
             </table>
-
+      
             {/* Pagination */}
             <div className="mt-4 flex justify-center space-x-2">
-                {[...Array(totalPages)].map((_, i) => (
-                    <button
-                        key={i}
-                        className={`px-3 py-1 border rounded ${currentPage === i + 1 ? "bg-red-500 text-white" : ""}`}
-                        onClick={() => handlePageClick(i + 1)}
-                    >
-                        {i + 1}
-                    </button>
-                ))}
+              {[...Array(totalPages)].map((_, i) => (
+                <button
+                  key={i}
+                  className={`px-3 py-1 border rounded ${
+                    currentPage === i + 1
+                      ? "bg-red-400 text-white"
+                      : "bg-red-200 text-white hover:bg-red-600"
+                  }`}
+                  onClick={() => handlePageClick(i + 1)}
+                >
+                  {i + 1}
+                </button>
+              ))}
             </div>
+          </div>
         </div>
-    );
-}
+      );
+    }      
