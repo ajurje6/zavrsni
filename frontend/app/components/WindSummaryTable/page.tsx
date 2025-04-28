@@ -128,7 +128,7 @@ const WindSummaryTable = () => {
       </div>
   
       {/* Table */}
-<div className="relative overflow-x-auto shadow-md sm:rounded-lg">
+<div className="relative overflow-x-auto shadow-xs">
   <table className="w-full text-sm text-left text-white bg-gradient-to-b from-red-200 via-red-400 to-red-600 rounded-lg overflow-hidden">
     <thead className="text-xs text-white uppercase bg-red-400">
       <tr>

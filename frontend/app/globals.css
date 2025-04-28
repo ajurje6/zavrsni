@@ -1,1 +1,10 @@
 @import "tailwindcss";
+.react-calendar-heatmap {
+    margin-bottom: 0;  /* Removes extra space at the bottom */
+    padding-bottom: 0; /* Removes extra padding */
+  }
+  
+  .react-calendar-heatmap svg {
+    display: block;    /* Removes any extra space below the SVG */
+  }
+  

@@ -65,7 +65,7 @@ const StackedPressureChart = () => {
       },
       {
         label: "Avg Pressure",
-        data: filteredData.map((entry) => entry.avg_pressure),
+        data: filteredData.map((entry) => entry.avg_pressure - entry.min_pressure),
         backgroundColor: "blue",
         borderColor: "blue",
         borderWidth: 1,
@@ -73,7 +73,7 @@ const StackedPressureChart = () => {
       },
       {
         label: "Max Pressure",
-        data: filteredData.map((entry) => entry.max_pressure),
+        data: filteredData.map((entry) => entry.max_pressure - entry.avg_pressure),
         backgroundColor: "green",
         borderColor: "green",
         borderWidth: 1,
@@ -81,7 +81,7 @@ const StackedPressureChart = () => {
       },
     ],
   };
-
+  
   const options = {
     responsive: true,
     maintainAspectRatio: false,
@@ -93,9 +93,9 @@ const StackedPressureChart = () => {
             const index = tooltipItem.dataIndex;
             const entry = filteredData[index];
   
-            if (datasetIndex === 0) return `Min: ${entry.min_pressure}`;
-            if (datasetIndex === 1) return `Avg: ${entry.avg_pressure}`;
-            if (datasetIndex === 2) return `Max: ${entry.max_pressure}`;
+            if (datasetIndex === 0) return `Min: ${entry.min_pressure.toFixed(2)}`;
+            if (datasetIndex === 1) return `Avg: ${entry.avg_pressure.toFixed(2)}`;
+            if (datasetIndex === 2) return `Max: ${entry.max_pressure.toFixed(2)}`;
           },
         },
       },
@@ -120,6 +120,11 @@ const StackedPressureChart = () => {
           font: {
             size: 16,
           },
+        },
+        min: 1000,
+        max: 1050,
+        ticks: {
+          stepSize: 10, // how much between each number on y-axis
         },
       },
     },
