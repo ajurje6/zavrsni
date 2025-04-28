@@ -15,9 +15,10 @@ from database import get_db
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import func
 from sqlalchemy.future import select
+from database import AsyncSessionLocal
 app = FastAPI()
 
-# Enables CORS for frontend
+# Enables CORS for frontend, all origins allowed for now
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -218,7 +219,6 @@ def parse_all_txt(folder_path):
 
 async def store_data_in_db():
     folder_path = "./data/bakar-mikrobarometar"
-    from database import AsyncSessionLocal
 
     async with AsyncSessionLocal() as db:
         for filename in os.listdir(folder_path):
