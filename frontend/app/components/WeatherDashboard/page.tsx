@@ -8,7 +8,10 @@ import SpeedHeightBarChart from "../SpeedHeightBarChart/page";
 import WindSummaryTable from "../WindSummaryTable/page";
 
 const WeatherDashboard = () => {
-  const [selectedDate, setSelectedDate] = useState("2025-01-03"); // Default date
+  const [selectedDate, setSelectedDate] = useState(() => {
+    const today = new Date();
+    return today.toISOString().split('T')[0]; // format "YYYY-MM-DD"
+  });
   const [weatherData, setWeatherData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [noData, setNoData] = useState(false);

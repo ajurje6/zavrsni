@@ -99,7 +99,8 @@ const WindSummaryTable = () => {
             className="p-2 border rounded"
           >
             <option value="">Select Month</option>
-            {["January", "February", "March"].map((month, index) => (
+            {["January", "February", "March","April","May","June","July","August","September","October","November","December"]
+            .map((month, index) => (
               <option key={index} value={index}>
                 {month}
               </option>

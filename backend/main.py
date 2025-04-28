@@ -34,41 +34,31 @@ logger = logging.getLogger(__name__)
 # Track last modified times of files
 last_modified_times = {}
 BASE_URL = "https://meteo777.pythonanywhere.com/sodar/data/"
-#SODAR
+
 def safe_float(value):
     try:
         return float(value)
     except ValueError:
-        return None  # Return None or any default value you prefer
+        return None
 
-# Fetch SODAR data within the specified date range
 async def fetch_sodar_data(start_date, end_date):
     all_data = []
     current_date = start_date
 
-    # Create a session for aiohttp
     async with aiohttp.ClientSession() as session:
-        # List of tasks for concurrent fetching
         tasks = []
 
-        # Loop through dates from start_date to end_date
         while current_date <= end_date:
             yymmdd = current_date.strftime("%y%m%d")
             url = f"{BASE_URL}{yymmdd}.txt"
-
-            # Create an asynchronous request task
             tasks.append(fetch_data_for_date(session, url, all_data))
-
-            # Move to the next day
             current_date += timedelta(days=1)
 
-        # Run all tasks concurrently
         await asyncio.gather(*tasks)
 
-    print(f"Total entries collected: {len(all_data)}")  # Debug output
+    print(f"Total entries collected: {len(all_data)}")
     return all_data
 
-# Fetch data for a specific date
 async def fetch_data_for_date(session, url, all_data):
     try:
         async with session.get(url) as response:
@@ -87,28 +77,30 @@ async def fetch_data_for_date(session, url, all_data):
 
                     if header_found:
                         parts = line.split()
-                        if len(parts) >= 4:
+                        if len(parts) >= 5:
                             all_data.append({
-                                "time": f"{parts[0]} {parts[1]}",  # Date + Time
-                                "height": safe_float(parts[2]),  # Height
-                                "speed": safe_float(parts[3]),  # Wind Speed
-                                "direction": safe_float(parts[4]),  # Wind Direction
+                                "time": f"{parts[0]} {parts[1]}",
+                                "height": safe_float(parts[2]),
+                                "speed": safe_float(parts[3]),
+                                "direction": safe_float(parts[4]),
                             })
     except Exception as e:
         print(f"Failed to fetch {url}: {e}")
 
 @app.get("/sodar-data")
 async def get_sodar_data():
-    start_date = datetime(2025, 1, 3)  # Start date: 2025-01-03
-    end_date = datetime(2025, 3, 4)  # End date: 2025-03-04
-    data = await fetch_sodar_data(start_date, end_date)
+    today = datetime.today()
+    two_months_ago = today - timedelta(days=60)
+
+    data = await fetch_sodar_data(two_months_ago, today)
     return data
 
 @app.get("/sodar-summary")
 async def get_sodar_summary():
-    start_date = datetime(2025, 1, 3)
-    end_date = datetime(2025, 3, 4)
-    raw_data = await fetch_sodar_data(start_date, end_date)
+    today = datetime.today()
+    two_months_ago = today - timedelta(days=60)
+
+    raw_data = await fetch_sodar_data(two_months_ago, today)
 
     # Group data by date
     grouped = {}
@@ -126,10 +118,10 @@ async def get_sodar_summary():
 
         grouped.setdefault(date_str, []).append({"speed": speed, "direction": direction})
 
-    # Generate full date range from start_date to end_date
+    # Generate full date range from two_months_ago to today
     all_dates = []
-    current = start_date
-    while current <= end_date:
+    current = two_months_ago
+    while current <= today:
         all_dates.append(current.strftime("%Y-%m-%d"))
         current += timedelta(days=1)
 
@@ -137,7 +129,6 @@ async def get_sodar_summary():
     for date in all_dates:
         entries = grouped.get(date, [])
         
-        # Handle case where no valid data exists for this date
         if entries:
             speeds = [e["speed"] for e in entries]
             directions = [e["direction"] for e in entries]
@@ -150,7 +141,6 @@ async def get_sodar_summary():
                 "avg_direction": sum(directions) / len(directions),
             })
         else:
-            # If no valid data for this date, use None for the stats
             summary.append({
                 "date": date,
                 "max_speed": None,
@@ -159,13 +149,11 @@ async def get_sodar_summary():
                 "avg_direction": None,
             })
 
-    # Sort by date in ascending order
     summary.sort(key=lambda x: x["date"])
 
     return {
         "data": summary,
     }
-
 
 #BAROMETER
 def parse_txt(file_path):
