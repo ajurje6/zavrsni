@@ -16,6 +16,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import func
 from sqlalchemy.future import select
 from database import AsyncSessionLocal
+import matplotlib.pyplot as plt
+import io
+import base64
+from fastapi.responses import Response
+from io import BytesIO
+import matplotlib.cm as cm
+import matplotlib.colors as mcolors
+import numpy as np
+from influxdb_client import InfluxDBClient
+
 app = FastAPI()
 
 # Enables CORS for frontend, all origins allowed for now
@@ -154,6 +164,73 @@ async def get_sodar_summary():
     return {
         "data": summary,
     }
+
+INFLUX_URL = os.getenv("INFLUX_URL")
+INFLUX_TOKEN = os.getenv("INFLUX_TOKEN")
+INFLUX_ORG = os.getenv("INFLUX_ORG")
+INFLUX_BUCKET = os.getenv("INFLUX_BUCKET")
+
+@app.get("/sodar-plot")
+def generate_sodar_plot():
+    client = InfluxDBClient(url=INFLUX_URL, token=INFLUX_TOKEN, org=INFLUX_ORG)
+    query_api = client.query_api()
+
+    query = f'''
+    from(bucket: "{INFLUX_BUCKET}")
+      |> range(start: -24h)
+      |> filter(fn: (r) => r._measurement == "sodar")
+      |> pivot(rowKey:["_time"], columnKey: ["_field"], valueColumn: "_value")
+      |> keep(columns: ["_time", "height", "speed", "direction"])
+    '''
+
+    result = query_api.query_data_frame(query)
+
+    # Debug log to print the fetched data
+    print(result.head())  # Add this to check the first few rows of the result
+
+    if result.empty:
+        return Response(content="No data available", status_code=404)
+
+    result['_time'] = pd.to_datetime(result['_time'])
+    result['height'] = result['height'].astype(float)
+    result = result.sort_values(by=['_time', 'height'])
+
+    fig, ax = plt.subplots(figsize=(22, 11))
+
+    times = result['_time'].unique()
+    heights = sorted(result['height'].unique())
+    cmap = cm.jet
+    norm = mcolors.Normalize(vmin=0, vmax=40)
+
+    for t in times:
+        df_time = result[result['_time'] == t]
+        df_time = df_time.sort_values(by='height')
+        for _, row in df_time.iterrows():
+            x = t
+            y = row['height']
+            speed = row['speed']
+            direction = row['direction']
+            angle_rad = np.radians(direction)
+            dx = np.sin(angle_rad)
+            dy = np.cos(angle_rad)
+            ax.quiver(x, y, dx, dy, color=cmap(norm(speed)), angles='xy', scale=20, scale_units='xy', width=0.002)
+
+    ax.set_ylabel("Height [m]")
+    ax.set_xlabel("Time")
+    ax.set_title("LDSP SODAR Wind Profile")
+    ax.grid(True)
+
+    sm = cm.ScalarMappable(cmap=cmap, norm=norm)
+    cbar = fig.colorbar(sm, ax=ax, orientation='vertical')
+    cbar.set_label("Wind Speed [m/s]")
+
+    fig.autofmt_xdate()
+
+    buf = BytesIO()
+    plt.savefig(buf, format='png', bbox_inches='tight')
+    plt.close(fig)
+    buf.seek(0)
+    return Response(content=buf.read(), media_type="image/png")
 
 #BAROMETER
 def parse_txt(file_path):

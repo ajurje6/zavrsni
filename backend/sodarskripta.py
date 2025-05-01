@@ -4,14 +4,15 @@ from influxdb_client import InfluxDBClient, Point, WriteOptions
 from influxdb_client.client.write_api import SYNCHRONOUS
 from datetime import datetime
 from io import StringIO
-
+from dotenv import load_dotenv
+import os
 # ---------- KONFIGURACIJA -----------------
 URL_TEMPLATE = "https://meteo777.pythonanywhere.com/sodar/data/{filename}.txt"
 FILE_DATE = "250417"  # npr. 04. ožujka 2025. -> 250304
-INFLUX_URL = "http://localhost:8086"
-INFLUX_TOKEN = "45El-CjV-tweLgZSvAYWZ8rRPRvDUMlpojchWf05UpXx9_UfCwP1raSKuTxNqNZ-zXHlVIuNcWVAI-jW9s2gcQ=="
-INFLUX_ORG = "FESB"
-INFLUX_BUCKET = "sodar_data"
+INFLUX_URL = os.getenv("INFLUX_URL")
+INFLUX_TOKEN = os.getenv("INFLUX_TOKEN")
+INFLUX_ORG = os.getenv("INFLUX_ORG")
+INFLUX_BUCKET = os.getenv("INFLUX_BUCKET")
 # ------------------------------------------
 
 def fetch_data(file_date):
