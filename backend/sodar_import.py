@@ -40,11 +40,8 @@ def write_to_influx(lp_file, bucket="sodar_data", org="FESB"):
         print("Data written successfully.")
 
 if __name__ == "__main__":
-    if len(sys.argv) != 2:
-        print("Usage: python sodar_import.py YYMMDD")
-        sys.exit(1)
+    date_arg = datetime.now().strftime("%y%m%d")
 
-    date_arg = sys.argv[1]
     date_formatted = f"20{date_arg[:2]}-{date_arg[2:4]}-{date_arg[4:]}"
     url_template = "https://meteo777.pythonanywhere.com/sodar/data/{date}.txt"
     local_txt = f"/home/antoniojurjevic/zavrsni/backend/data/sodar/{date_arg}.txt"
