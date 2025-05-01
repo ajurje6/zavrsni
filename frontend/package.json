@@ -21,6 +21,7 @@
     "dayjs": "^1.11.13",
     "jspdf": "^3.0.0",
     "jspdf-autotable": "^5.0.2",
+    "lightningcss": "^1.29.3",
     "next": "^15.2.1",
     "papaparse": "^5.5.2",
     "react": "^19.0.0",

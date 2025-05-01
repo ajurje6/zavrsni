@@ -327,6 +327,5 @@ async def get_stacked_graph_data(
 
 @app.on_event("startup")
 async def startup_event():
-   pass  # Don't trigger on startup now, it should be manually called or scheduled
-
-# To run the server, use the command: uvicorn main:app --reload 
+    pass
+# To run the server, use the command: source venv/bin/activate python -m uvicorn main:app --reload
