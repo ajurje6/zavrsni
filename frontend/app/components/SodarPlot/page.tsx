@@ -24,7 +24,7 @@ export default function SodarPlot() {
 
   return (
     <div className="flex flex-col gap-4 items-center p-4">
-      <h2 className="text-3xl font-semibold mb-4 text-center">SODAR Wind Profile</h2>
+      <h2 className="text-3xl font-semibold mb-4 text-center">SODAR Data Visualization</h2>
 
       <div className="flex items-center gap-4 flex-wrap justify-center">
         <label className="flex items-center gap-2">

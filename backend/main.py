@@ -41,134 +41,89 @@ app.add_middleware(
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Track last modified times of files
-last_modified_times = {}
-BASE_URL = "https://meteo777.pythonanywhere.com/sodar/data/"
-
-def safe_float(value):
-    try:
-        return float(value)
-    except ValueError:
-        return None
-
-async def fetch_sodar_data(start_date, end_date):
-    all_data = []
-    current_date = start_date
-
-    async with aiohttp.ClientSession() as session:
-        tasks = []
-
-        while current_date <= end_date:
-            yymmdd = current_date.strftime("%y%m%d")
-            url = f"{BASE_URL}{yymmdd}.txt"
-            tasks.append(fetch_data_for_date(session, url, all_data))
-            current_date += timedelta(days=1)
-
-        await asyncio.gather(*tasks)
-
-    print(f"Total entries collected: {len(all_data)}")
-    return all_data
-
-async def fetch_data_for_date(session, url, all_data):
-    try:
-        async with session.get(url) as response:
-            print(f"Fetching {url}...")
-            print(f"Response status: {response.status}")
-
-            if response.status == 200:
-                text = await response.text()
-                lines = text.splitlines()
-                header_found = False
-
-                for line in lines:
-                    if "time" in line and "z" in line:
-                        header_found = True
-                        continue
-
-                    if header_found:
-                        parts = line.split()
-                        if len(parts) >= 5:
-                            all_data.append({
-                                "time": f"{parts[0]} {parts[1]}",
-                                "height": safe_float(parts[2]),
-                                "speed": safe_float(parts[3]),
-                                "direction": safe_float(parts[4]),
-                            })
-    except Exception as e:
-        print(f"Failed to fetch {url}: {e}")
-
-@app.get("/sodar-data")
-async def get_sodar_data():
-    today = datetime.today()
-    two_months_ago = today - timedelta(days=60)
-
-    data = await fetch_sodar_data(two_months_ago, today)
-    return data
-
-@app.get("/sodar-summary")
-async def get_sodar_summary():
-    today = datetime.today()
-    two_months_ago = today - timedelta(days=60)
-
-    raw_data = await fetch_sodar_data(two_months_ago, today)
-
-    # Group data by date
-    grouped = {}
-    for entry in raw_data:
-        date_str = entry["time"].split(" ")[0]
-        speed = entry.get("speed")
-        direction = entry.get("direction")
-
-        # Skip invalid entries (non-numeric values)
-        try:
-            speed = float(speed)
-            direction = float(direction)
-        except (ValueError, TypeError):
-            continue
-
-        grouped.setdefault(date_str, []).append({"speed": speed, "direction": direction})
-
-    # Generate full date range from two_months_ago to today
-    all_dates = []
-    current = two_months_ago
-    while current <= today:
-        all_dates.append(current.strftime("%Y-%m-%d"))
-        current += timedelta(days=1)
-
-    summary = []
-    for date in all_dates:
-        entries = grouped.get(date, [])
-        
-        if entries:
-            speeds = [e["speed"] for e in entries]
-            directions = [e["direction"] for e in entries]
-
-            summary.append({
-                "date": date,
-                "max_speed": max(speeds),
-                "min_speed": min(speeds),
-                "avg_speed": sum(speeds) / len(speeds),
-                "avg_direction": sum(directions) / len(directions),
-            })
-        else:
-            summary.append({
-                "date": date,
-                "max_speed": None,
-                "min_speed": None,
-                "avg_speed": None,
-                "avg_direction": None,
-            })
-
-    summary.sort(key=lambda x: x["date"])
-
-    return {
-        "data": summary,
-    }
-
 INFLUX_URL = os.getenv("INFLUX_URL")
 INFLUX_TOKEN = os.getenv("INFLUX_TOKEN")
 INFLUX_ORG = os.getenv("INFLUX_ORG")
 INFLUX_BUCKET = os.getenv("INFLUX_BUCKET")
+
+@app.get("/sodar-data")
+async def get_sodar_data():
+    client = InfluxDBClient(url=INFLUX_URL, token=INFLUX_TOKEN, org=INFLUX_ORG)
+    query_api = client.query_api()
+
+    query = f'''
+    from(bucket: "{INFLUX_BUCKET}")
+      |> range(start: 0)
+      |> filter(fn: (r) => r._measurement == "sodar")
+      |> pivot(rowKey:["_time"], columnKey: ["_field"], valueColumn: "_value")
+      |> keep(columns: ["_time", "height", "speed", "direction"])
+    '''
+
+    df = query_api.query_data_frame(query)
+    if df.empty:
+        return []
+
+    df["_time"] = pd.to_datetime(df["_time"])
+    df = df.dropna(subset=["speed", "direction", "height"])
+    df["height"] = df["height"].astype(float)  # Ensure numeric type for sorting
+
+    # Sort by time and height
+    df = df.sort_values(by=["_time", "height"])
+
+    result = [
+        {
+            "time": row["_time"].strftime("%Y-%m-%d %H:%M"),
+            "height": row["height"],
+            "speed": float(row["speed"]),
+            "direction": float(row["direction"]),
+        }
+        for _, row in df.iterrows()
+    ]
+
+    return result
+
+@app.get("/sodar-summary")
+async def get_sodar_summary():
+    client = InfluxDBClient(url=INFLUX_URL, token=INFLUX_TOKEN, org=INFLUX_ORG)
+    query_api = client.query_api()
+
+    query = f'''
+    from(bucket: "{INFLUX_BUCKET}")
+      |> range(start: 0)
+      |> filter(fn: (r) => r._measurement == "sodar")
+      |> pivot(rowKey:["_time"], columnKey: ["_field"], valueColumn: "_value")
+      |> keep(columns: ["_time", "speed", "direction"])
+    '''
+
+    df = query_api.query_data_frame(query)
+    if df.empty:
+        return {"data": []}
+
+    df["_time"] = pd.to_datetime(df["_time"])
+    df["date"] = df["_time"].dt.date  # returns date object (no time, no tz)
+
+    df = df.dropna(subset=["speed", "direction"])
+    df["speed"] = df["speed"].astype(float)
+    df["direction"] = df["direction"].astype(float)
+
+    grouped = df.groupby("date")
+
+    summary = []
+    for date, group in grouped:
+        speeds = group["speed"]
+        directions = group["direction"]
+
+        summary.append({
+            "date": str(date),  # convert date object to string 'YYYY-MM-DD'
+            "max_speed": speeds.max(),
+            "min_speed": speeds.min(),
+            "avg_speed": speeds.mean(),
+            "avg_direction": directions.mean()
+        })
+
+    summary.sort(key=lambda x: x["date"])  # dates are strings, format-safe
+
+    return {"data": summary}
 
 @app.get("/sodar-plot")
 def generate_sodar_plot(date: str = Query(..., description="Date in YYYY-MM-DD format")):
