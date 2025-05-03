@@ -171,23 +171,25 @@ INFLUX_ORG = os.getenv("INFLUX_ORG")
 INFLUX_BUCKET = os.getenv("INFLUX_BUCKET")
 
 @app.get("/sodar-plot")
-def generate_sodar_plot():
+def generate_sodar_plot(date: str = Query(..., description="Date in YYYY-MM-DD format")):
+    try:
+        start_dt = datetime.strptime(date, "%Y-%m-%d")
+        end_dt = start_dt + timedelta(days=1)
+    except ValueError:
+        return Response(content="Invalid date format", status_code=400)
+    
     client = InfluxDBClient(url=INFLUX_URL, token=INFLUX_TOKEN, org=INFLUX_ORG)
     query_api = client.query_api()
 
     query = f'''
     from(bucket: "{INFLUX_BUCKET}")
-      |> range(start: -24h)
+      |> range(start: {start_dt.isoformat()}Z, stop: {end_dt.isoformat()}Z)
       |> filter(fn: (r) => r._measurement == "sodar")
       |> pivot(rowKey:["_time"], columnKey: ["_field"], valueColumn: "_value")
       |> keep(columns: ["_time", "height", "speed", "direction"])
     '''
 
     result = query_api.query_data_frame(query)
-
-    # Debug log to print the fetched data
-    print(result.head())  # Add this to check the first few rows of the result
-
     if result.empty:
         return Response(content="No data available", status_code=404)
 
@@ -195,12 +197,14 @@ def generate_sodar_plot():
     result['height'] = result['height'].astype(float)
     result = result.sort_values(by=['_time', 'height'])
 
-    fig, ax = plt.subplots(figsize=(22, 11))
+    # Get the actual last fetched time (most recent time in the data)
+    last_fetched = result['_time'].max().strftime("%Y-%m-%d %H:%M:%S")
 
+    fig, ax = plt.subplots(figsize=(18, 8))
     times = result['_time'].unique()
     heights = sorted(result['height'].unique())
     cmap = cm.jet
-    norm = mcolors.Normalize(vmin=0, vmax=40)
+    norm = mcolors.Normalize(vmin=0, vmax=80)
 
     for t in times:
         df_time = result[result['_time'] == t]
@@ -217,7 +221,7 @@ def generate_sodar_plot():
 
     ax.set_ylabel("Height [m]")
     ax.set_xlabel("Time")
-    ax.set_title("LDSP SODAR Wind Profile")
+    ax.set_title(f"SODAR Wind Profile\nData last fetched at: {last_fetched}")
     ax.grid(True)
 
     sm = cm.ScalarMappable(cmap=cmap, norm=norm)
@@ -225,9 +229,8 @@ def generate_sodar_plot():
     cbar.set_label("Wind Speed [m/s]")
 
     fig.autofmt_xdate()
-
     buf = BytesIO()
-    plt.savefig(buf, format='png', bbox_inches='tight')
+    plt.savefig(buf, format='png', bbox_inches='tight', dpi=150)
     plt.close(fig)
     buf.seek(0)
     return Response(content=buf.read(), media_type="image/png")

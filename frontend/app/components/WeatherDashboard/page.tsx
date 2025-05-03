@@ -47,8 +47,6 @@ const WeatherDashboard = () => {
 
   return (
     <div className="p-4 bg-white text-black rounded-lg">
-  {/* Centered Title */}
-  <h2 className="text-3xl font-semibold mb-4 text-center">SODAR Data Visualization</h2>
 
   {/* Centered Date Selector */}
   <div className="mb-4 flex justify-center">
