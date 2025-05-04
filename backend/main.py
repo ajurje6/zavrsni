@@ -106,6 +106,9 @@ async def get_sodar_summary():
     df["speed"] = df["speed"].astype(float)
     df["direction"] = df["direction"].astype(float)
 
+    # Filter out rows where speed is 0 (invalid)
+    df = df[df["speed"] > 0]
+
     grouped = df.groupby("date")
 
     summary = []
@@ -152,7 +155,7 @@ def generate_sodar_plot(date: str = Query(..., description="Date in YYYY-MM-DD f
     result['height'] = result['height'].astype(float)
     result = result.sort_values(by=['_time', 'height'])
 
-    # Get the actual last fetched time (most recent time in the data)
+    # Get the last fetched time
     last_fetched = result['_time'].max().strftime("%Y-%m-%d %H:%M:%S")
 
     fig, ax = plt.subplots(figsize=(18, 8))
