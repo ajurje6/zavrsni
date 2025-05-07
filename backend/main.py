@@ -48,7 +48,7 @@ INFLUX_BUCKET = os.getenv("INFLUX_BUCKET")
 
 @app.get("/sodar-data")
 async def get_sodar_data():
-    client = InfluxDBClient(url=INFLUX_URL, token=INFLUX_TOKEN, org=INFLUX_ORG)
+    client = InfluxDBClient(url=INFLUX_URL, token=INFLUX_TOKEN, org=INFLUX_ORG, verify_ssl=False)
     query_api = client.query_api()
 
     query = f'''
@@ -84,7 +84,7 @@ async def get_sodar_data():
 
 @app.get("/sodar-summary")
 async def get_sodar_summary():
-    client = InfluxDBClient(url=INFLUX_URL, token=INFLUX_TOKEN, org=INFLUX_ORG)
+    client = InfluxDBClient(url=INFLUX_URL, token=INFLUX_TOKEN, org=INFLUX_ORG, verify_ssl=False)
     query_api = client.query_api()
 
     query = f'''
@@ -136,7 +136,7 @@ def generate_sodar_plot(date: str = Query(..., description="Date in YYYY-MM-DD f
     except ValueError:
         return Response(content="Invalid date format", status_code=400)
     
-    client = InfluxDBClient(url=INFLUX_URL, token=INFLUX_TOKEN, org=INFLUX_ORG)
+    client = InfluxDBClient(url=INFLUX_URL, token=INFLUX_TOKEN, org=INFLUX_ORG, verify_ssl=False  )
     query_api = client.query_api()
 
     query = f'''
@@ -162,7 +162,7 @@ def generate_sodar_plot(date: str = Query(..., description="Date in YYYY-MM-DD f
     times = result['_time'].unique()
     heights = sorted(result['height'].unique())
     cmap = cm.jet
-    norm = mcolors.Normalize(vmin=0, vmax=80)
+    norm = mcolors.Normalize(vmin=0, vmax=50)
 
     for t in times:
         df_time = result[result['_time'] == t]
