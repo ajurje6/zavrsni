@@ -8,7 +8,7 @@ export default function SodarPlot() {
   const [loading, setLoading] = useState(false);
 
   const generateImageUrl = (date: string) => {
-    return `http://localhost:8000/sodar-plot?date=${date}`;
+    return `https://zavrsni-4knw.onrender.com/sodar-plot?date=${date}`;
   };
 
   const fetchPlot = () => {

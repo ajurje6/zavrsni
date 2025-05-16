@@ -6,7 +6,7 @@ const PressureHeatmap = () => {
   const [pressureData, setPressureData] = useState<any[]>([]);
 
   useEffect(() => {
-    fetch('http://127.0.0.1:8000/stacked-graph')
+    fetch('https://zavrsni-4knw.onrender.com/stacked-graph')
       .then((response) => response.json())
       .then((data) => {
         setPressureData(data.data);

@@ -28,7 +28,7 @@ const WindSummaryTable = () => {
 
   useEffect(() => {
     const fetchData = async () => {
-      const res = await fetch("http://127.0.0.1:8000/sodar-summary");
+      const res = await fetch("https://zavrsni-4knw.onrender.com/sodar-summary");
       const json = await res.json();
       setData(json.data); // Save all the data in the state
     };

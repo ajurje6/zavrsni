@@ -48,7 +48,7 @@ export default function BarometerGraph() {
     useEffect(() => {
         setIsLoading(true);
     
-        axios.get(`http://127.0.0.1:8000/data?date=${selectedDate}`)
+        axios.get(`https://zavrsni-4knw.onrender.com/data?date=${selectedDate}`)
             .then((response) => {
                 const data = response.data.data;
     

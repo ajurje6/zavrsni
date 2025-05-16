@@ -20,7 +20,7 @@ const WeatherDashboard = () => {
     setIsLoading(true);
     setNoData(false);
     try {
-      const response = await axios.get("http://127.0.0.1:8000/sodar-data");
+      const response = await axios.get("https://zavrsni-4knw.onrender.com/sodar-data");
       const rawData = response.data;
   
       // Filter by selected date and remove entries with "*"

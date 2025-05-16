@@ -21,7 +21,7 @@ export default function BarometerTable() {
 
     useEffect(() => {
         const fetchData = async () => {
-            const res = await fetch("http://127.0.0.1:8000/stacked-graph");
+            const res = await fetch("https://zavrsni-4knw.onrender.com/stacked-graph");
             const json = await res.json();
             setData(json.data);
         };
