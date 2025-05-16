@@ -1,6 +1,14 @@
 "use client";
 import { Line } from "react-chartjs-2";
-import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Legend } from "chart.js";
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Tooltip,
+  Legend,
+} from "chart.js";
 import { useEffect, useState } from "react";
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Legend);
@@ -39,23 +47,27 @@ const WindDirectionGraph = ({ data }: { data: any }) => {
       }
     });
 
-    // Calculate average per time period, filter out empty groups
+    // Calculate average per time period
     const averagedData = Object.entries(groupedData)
       .map(([time, directions]) => {
         if (directions.length === 0) return null;
         const avgDirection = directions.reduce((sum, dir) => sum + dir, 0) / directions.length;
         return { time, avgDirection: parseFloat(avgDirection.toFixed(1)) };
       })
-      .filter((entry): entry is { time: string; avgDirection: number } => entry !== null);
+      .filter(
+        (entry): entry is { time: string; avgDirection: number } =>
+          entry !== null && typeof entry.avgDirection === "number" && !isNaN(entry.avgDirection)
+      );
 
     if (averagedData.length === 0) {
       setChartData(null);
       return;
     }
 
-    // Prepare data for chart
     const times = averagedData.map((entry) => entry.time);
     const avgWindDirections = averagedData.map((entry) => entry.avgDirection);
+
+    console.log("Final chart entries (directions):", averagedData);
 
     setChartData({
       labels: times,
@@ -102,6 +114,8 @@ const WindDirectionGraph = ({ data }: { data: any }) => {
                 ticks: {
                   callback: (value) => getCompassDirection(value as number),
                 },
+                min: 0,
+                max: 360,
               },
               x: {
                 title: {
@@ -123,6 +137,7 @@ const WindDirectionGraph = ({ data }: { data: any }) => {
 };
 
 export default WindDirectionGraph;
+
 
 
 

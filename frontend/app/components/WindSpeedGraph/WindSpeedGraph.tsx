@@ -36,19 +36,28 @@ const WindSpeedGraph = ({ data }: { data: any }) => {
       }
     });
 
-    const averagedData = Object.entries(groupedData).map(([time, speeds]) => {
-      if (speeds.length === 0) return null;
-      const avgSpeed = speeds.reduce((sum, speed) => sum + speed, 0) / speeds.length;
-      return { time, avgSpeed: parseFloat(avgSpeed.toFixed(2)) };
-    }).filter((entry): entry is { time: string; avgSpeed: number } => entry !== null);
+    const averagedData = Object.entries(groupedData)
+      .map(([time, speeds]) => {
+        if (speeds.length === 0) return null;
+        const avgSpeed = speeds.reduce((sum, speed) => sum + speed, 0) / speeds.length;
+        return { time, avgSpeed: parseFloat(avgSpeed.toFixed(2)) };
+      })
+      .filter((entry): entry is { time: string; avgSpeed: number } => entry !== null);
 
-    if (averagedData.length === 0) {
+    // Filter out any entries with invalid avgSpeed
+    const validEntries = averagedData.filter(
+      (entry) => typeof entry.avgSpeed === "number" && !isNaN(entry.avgSpeed)
+    );
+
+    if (validEntries.length === 0) {
       setChartData(null);
       return;
     }
 
-    const labels = averagedData.map((entry) => entry.time);
-    const avgSpeeds = averagedData.map((entry) => entry.avgSpeed);
+    const labels = validEntries.map((entry) => entry.time);
+    const avgSpeeds = validEntries.map((entry) => entry.avgSpeed);
+
+    console.log("Final chart entries:", validEntries);
 
     setChartData({
       labels,
@@ -102,6 +111,7 @@ const WindSpeedGraph = ({ data }: { data: any }) => {
 };
 
 export default WindSpeedGraph;
+
 
 
 

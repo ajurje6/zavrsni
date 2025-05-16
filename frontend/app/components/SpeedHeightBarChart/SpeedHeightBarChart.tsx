@@ -19,25 +19,27 @@ const SpeedHeightBarChart = ({ data }: SpeedHeightBarChartProps) => {
       return;
     }
 
-    // Extract unique heights
     const heights = [...new Set(data.map((entry: any) => entry.height))];
 
-    // Calculate average wind speed for each height, skipping invalid values
     const avgWindSpeeds = heights.map((height) => {
       const entriesForHeight = data.filter((entry: any) => entry.height === height);
 
       if (entriesForHeight.length === 0) return null;
 
-      const totalSpeed = entriesForHeight.reduce((sum: number, entry: any) => {
-        // Only add speed if it's a valid number
-        return sum + (typeof entry.speed === "number" && !isNaN(entry.speed) ? entry.speed : 0);
-      }, 0);
+      // Filter out invalid speed entries before averaging
+      const validSpeeds = entriesForHeight
+        .map(entry => entry.speed)
+        .filter((speed: any) => typeof speed === 'number' && !isNaN(speed));
 
-      const avg = totalSpeed / entriesForHeight.length;
+      if (validSpeeds.length === 0) return null;
+
+      const totalSpeed = validSpeeds.reduce((sum: number, speed: number) => sum + speed, 0);
+      const avg = totalSpeed / validSpeeds.length;
+
       return isNaN(avg) ? null : avg;
     });
 
-    // Filter out null values and keep heights aligned with speeds
+    // Filter out heights and speeds where avg speed is null
     const filteredHeights = heights.filter((_, i) => avgWindSpeeds[i] !== null);
     const filteredSpeeds = avgWindSpeeds.filter((v): v is number => v !== null);
 
@@ -46,7 +48,6 @@ const SpeedHeightBarChart = ({ data }: SpeedHeightBarChartProps) => {
       return;
     }
 
-    // Set prepared chart data
     setChartData({
       labels: filteredHeights.map(String),
       datasets: [
@@ -114,6 +115,7 @@ const SpeedHeightBarChart = ({ data }: SpeedHeightBarChartProps) => {
 };
 
 export default SpeedHeightBarChart;
+
 
 
 
