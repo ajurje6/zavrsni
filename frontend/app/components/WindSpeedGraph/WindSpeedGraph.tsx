@@ -28,9 +28,9 @@ const WindSpeedGraph = ({ data }: { data: any }) => {
       setChartData(null);
       return;
     }
-
+  
     const groupedData: Record<string, number[]> = {};
-
+  
     data.forEach((entry: any) => {
       if (typeof entry.speed === "number" && !isNaN(entry.speed)) {
         if (!groupedData[entry.time]) {
@@ -39,7 +39,7 @@ const WindSpeedGraph = ({ data }: { data: any }) => {
         groupedData[entry.time].push(entry.speed);
       }
     });
-
+  
     const averagedData = Object.entries(groupedData)
       .map(([time, speeds]) => {
         if (speeds.length === 0) return null;
@@ -47,19 +47,23 @@ const WindSpeedGraph = ({ data }: { data: any }) => {
         return { time, avgSpeed: parseFloat(avgSpeed.toFixed(2)) };
       })
       .filter((entry): entry is { time: string; avgSpeed: number } => entry !== null);
-
+  
     const validEntries = averagedData.filter(
       (entry) => typeof entry.avgSpeed === "number" && !isNaN(entry.avgSpeed)
     );
-
+  
     if (validEntries.length === 0) {
       setChartData(null);
       return;
     }
-
+  
     const labels = validEntries.map((entry) => entry.time);
     const avgSpeeds = validEntries.map((entry) => entry.avgSpeed);
-
+  
+    console.log("Labels:", labels);
+    console.log("Average speeds:", avgSpeeds);
+    console.log("Any invalid speeds?", avgSpeeds.some(s => typeof s !== "number" || isNaN(s)));
+  
     setChartData({
       labels,
       datasets: [
@@ -72,7 +76,7 @@ const WindSpeedGraph = ({ data }: { data: any }) => {
         },
       ],
     });
-  }, [data]);
+  }, [data]);  
 
   const options = {
     responsive: true,
