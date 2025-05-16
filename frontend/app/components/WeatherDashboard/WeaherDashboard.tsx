@@ -2,10 +2,10 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
 import dayjs from "dayjs";
-import WindSpeedGraph from "../WindSpeedGraph/page";
-import WindDirectionGraph from "../WindDirectionGraph/page";
-import SpeedHeightBarChart from "../SpeedHeightBarChart/page";
-import WindSummaryTable from "../WindSummaryTable/page";
+import WindSpeedGraph from "../WindSpeedGraph/WindSpeedGraph";
+import WindDirectionGraph from "../WindDirectionGraph/WindDirectionGraph";
+import SpeedHeightBarChart from "../SpeedHeightBarChart/SpeedHeightBarChart";
+import WindSummaryTable from "../WindSummaryTable/WindSummaryTable";
 
 const WeatherDashboard = () => {
   const [selectedDate, setSelectedDate] = useState(() => {

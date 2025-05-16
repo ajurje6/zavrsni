@@ -1,9 +1,9 @@
 "use client";
-import BarometerGraph from "./components/BarometerGraph/page";
-import BarometerTable from "./components/BarometerTable/page";
-import Navbar from "./components/Navbar/page";
-import PressureHeatmap from "./components/PressureHeatmap/page";
-import StackedPressureChart from "./components/StackedPressureChart/page";
+import BarometerGraph from "./components/BarometerGraph/BarometerGraph";
+import BarometerTable from "./components/BarometerTable/BarometerTable";
+import Navbar from "./components/Navbar/Navbar";
+import PressureHeatmap from "./components/PressureHeatmap/PressureHeatmap";
+import StackedPressureChart from "./components/StackedPressureChart/StackedPressureChart";
 export default function Home() {
     return (
         <main>
