@@ -22,7 +22,6 @@ const WindSpeedGraph = ({ data }: { data: any }) => {
       setChartData(null);
       return;
     }
-    console.log("Raw data speeds:", data.map(d => d.speed));
     const groupedData: Record<string, number[]> = {};
 
     data.forEach((entry: any) => {
