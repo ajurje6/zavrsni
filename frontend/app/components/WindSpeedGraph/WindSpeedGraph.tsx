@@ -73,7 +73,6 @@ const WindSpeedGraph = ({ data }: { data: any }) => {
           borderColor: "rgba(255, 0, 0, 1)",
           backgroundColor: "rgba(255, 0, 0, 0.2)",
           tension: 0.3,
-          parsing: false,
         },
       ],
     });

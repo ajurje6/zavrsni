@@ -66,7 +66,7 @@ const SpeedHeightBarChart = ({ data }: SpeedHeightBarChartProps) => {
         {
           label: "Average Wind Speed (m/s)",
           data: filteredSpeeds,
-          backgroundColor: "rgba(255, 0, 0, 0.6)",
+          backgroundColor: "rgba(255, 0, 0, 0.2)",
           borderColor: "rgba(255, 0, 0, 1)",
           borderWidth: 1,
         },
@@ -77,17 +77,6 @@ const SpeedHeightBarChart = ({ data }: SpeedHeightBarChartProps) => {
   const options = {
     responsive: true,
     plugins: {
-      title: {
-        display: true,
-        text: "Average Wind Speed by Height",
-        color: "black",
-        font: {
-          size: 20,
-          weight: 700,
-          family: "Arial",
-        },
-        align: "start" as const,
-      },
       tooltip: {
         mode: "index" as const,
         intersect: false,
