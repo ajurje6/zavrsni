@@ -1,3 +1,4 @@
+"use client";
 import React, { useState, useEffect } from 'react';
 import ReactCalendarHeatmap from 'react-calendar-heatmap';
 import { Tooltip } from 'react-tooltip';
