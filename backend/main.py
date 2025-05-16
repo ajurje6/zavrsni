@@ -47,40 +47,50 @@ INFLUX_ORG = os.getenv("INFLUX_ORG")
 INFLUX_BUCKET = os.getenv("INFLUX_BUCKET")
 
 @app.get("/sodar-data")
-async def get_sodar_data():
-    client = InfluxDBClient(url=INFLUX_URL, token=INFLUX_TOKEN, org=INFLUX_ORG, verify_ssl=False)
-    query_api = client.query_api()
+async def get_sodar_data(date: str = Query(..., description="Format: YYYY-MM-DD")):
+    try:
+        # Parse and calculate start and end of the day
+        start_time = datetime.strptime(date, "%Y-%m-%d")
+        end_time = start_time + timedelta(days=1)
 
-    query = f'''
-    from(bucket: "{INFLUX_BUCKET}")
-      |> range(start: 0)
-      |> filter(fn: (r) => r._measurement == "sodar")
-      |> pivot(rowKey:["_time"], columnKey: ["_field"], valueColumn: "_value")
-      |> keep(columns: ["_time", "height", "speed", "direction"])
-    '''
+        client = InfluxDBClient(
+            url=INFLUX_URL, token=INFLUX_TOKEN, org=INFLUX_ORG, verify_ssl=False
+        )
+        query_api = client.query_api()
 
-    df = query_api.query_data_frame(query)
-    if df.empty:
-        return []
+        query = f'''
+        from(bucket: "{INFLUX_BUCKET}")
+          |> range(start: {start_time.isoformat()}Z, stop: {end_time.isoformat()}Z)
+          |> filter(fn: (r) => r._measurement == "sodar")
+          |> pivot(rowKey:["_time"], columnKey: ["_field"], valueColumn: "_value")
+          |> keep(columns: ["_time", "height", "speed", "direction"])
+        '''
 
-    df["_time"] = pd.to_datetime(df["_time"])
-    df = df.dropna(subset=["speed", "direction", "height"])
-    df["height"] = df["height"].astype(float)  # Ensure numeric type for sorting
+        df = query_api.query_data_frame(query)
 
-    # Sort by time and height
-    df = df.sort_values(by=["_time", "height"])
+        if df.empty:
+            return []
 
-    result = [
-        {
-            "time": row["_time"].strftime("%Y-%m-%d %H:%M"),
-            "height": row["height"],
-            "speed": float(row["speed"]),
-            "direction": float(row["direction"]),
-        }
-        for _, row in df.iterrows()
-    ]
+        df["_time"] = pd.to_datetime(df["_time"])
+        df = df.dropna(subset=["speed", "direction", "height"])
+        df["height"] = df["height"].astype(float)
 
-    return result
+        df = df.sort_values(by=["_time", "height"])
+
+        result = [
+            {
+                "time": row["_time"].strftime("%Y-%m-%d %H:%M"),
+                "height": row["height"],
+                "speed": float(row["speed"]),
+                "direction": float(row["direction"]),
+            }
+            for _, row in df.iterrows()
+        ]
+
+        return result
+
+    except Exception as e:
+        return {"error": str(e)}
 
 @app.get("/sodar-summary")
 async def get_sodar_summary():
