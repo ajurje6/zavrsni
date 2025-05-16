@@ -10,27 +10,49 @@ interface SpeedHeightBarChartProps {
 }
 
 const SpeedHeightBarChart = ({ data }: SpeedHeightBarChartProps) => {
-  console.log("ComponentName received data:", data);
+  console.log("SpeedHeightBarChart received data:", data);
   const [chartData, setChartData] = useState<any>(null);
 
   useEffect(() => {
-    // Extract heights dynamically
-    const heights = [...new Set(data.map((entry: any) => entry.height))]; // Get unique heights
+    if (!data || data.length === 0) {
+      setChartData(null);
+      return;
+    }
 
-    // Calculate average wind speed for each height
+    // Extract unique heights
+    const heights = [...new Set(data.map((entry: any) => entry.height))];
+
+    // Calculate average wind speed for each height, skipping invalid values
     const avgWindSpeeds = heights.map((height) => {
-      const entriesForHeight = data.filter((entry: any) => entry.height === height); // All entries for the same height
-      const totalSpeed = entriesForHeight.reduce((sum: number, entry: any) => sum + entry.speed, 0); // Sum of wind speeds
-      return totalSpeed / entriesForHeight.length; // Average speed
+      const entriesForHeight = data.filter((entry: any) => entry.height === height);
+
+      if (entriesForHeight.length === 0) return null;
+
+      const totalSpeed = entriesForHeight.reduce((sum: number, entry: any) => {
+        // Only add speed if it's a valid number
+        return sum + (typeof entry.speed === "number" && !isNaN(entry.speed) ? entry.speed : 0);
+      }, 0);
+
+      const avg = totalSpeed / entriesForHeight.length;
+      return isNaN(avg) ? null : avg;
     });
 
-    // Prepare the chart data
+    // Filter out null values and keep heights aligned with speeds
+    const filteredHeights = heights.filter((_, i) => avgWindSpeeds[i] !== null);
+    const filteredSpeeds = avgWindSpeeds.filter((v): v is number => v !== null);
+
+    if (filteredHeights.length === 0 || filteredSpeeds.length === 0) {
+      setChartData(null);
+      return;
+    }
+
+    // Set prepared chart data
     setChartData({
-      labels: heights.map(String), // Heights as labels on the X-axis
+      labels: filteredHeights.map(String),
       datasets: [
         {
           label: 'Average Wind Speed (m/s)',
-          data: avgWindSpeeds,
+          data: filteredSpeeds,
           backgroundColor: "red",
           borderColor: "red",
           borderWidth: 1,
@@ -39,7 +61,7 @@ const SpeedHeightBarChart = ({ data }: SpeedHeightBarChartProps) => {
     });
   }, [data]);
 
-  if (!chartData) return null;
+  if (!chartData) return <p>No valid data available to display chart.</p>;
 
   return (
     <div className="chart-container">

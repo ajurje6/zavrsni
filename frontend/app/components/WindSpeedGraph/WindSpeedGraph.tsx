@@ -16,7 +16,8 @@ ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, T
 
 const WindSpeedGraph = ({ data }: { data: any }) => {
   const [chartData, setChartData] = useState<any>(null);
-  console.log("ComponentName received data:", data);
+  console.log("WindSpeedGraph received data:", data);
+
   useEffect(() => {
     if (!data || data.length === 0) {
       setChartData(null);
@@ -24,17 +25,27 @@ const WindSpeedGraph = ({ data }: { data: any }) => {
     }
 
     const groupedData: Record<string, number[]> = {};
+
     data.forEach((entry: any) => {
-      if (!groupedData[entry.time]) {
-        groupedData[entry.time] = [];
+      // Only include valid speed values
+      if (typeof entry.speed === "number" && !isNaN(entry.speed)) {
+        if (!groupedData[entry.time]) {
+          groupedData[entry.time] = [];
+        }
+        groupedData[entry.time].push(entry.speed);
       }
-      groupedData[entry.time].push(entry.speed);
     });
 
     const averagedData = Object.entries(groupedData).map(([time, speeds]) => {
+      if (speeds.length === 0) return null;
       const avgSpeed = speeds.reduce((sum, speed) => sum + speed, 0) / speeds.length;
       return { time, avgSpeed: parseFloat(avgSpeed.toFixed(2)) };
-    });
+    }).filter((entry): entry is { time: string; avgSpeed: number } => entry !== null);
+
+    if (averagedData.length === 0) {
+      setChartData(null);
+      return;
+    }
 
     const labels = averagedData.map((entry) => entry.time);
     const avgSpeeds = averagedData.map((entry) => entry.avgSpeed);
