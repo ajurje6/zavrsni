@@ -6,8 +6,8 @@ import { useEffect, useState } from "react";
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Legend);
 
 const WindDirectionGraph = ({ data }: { data: any }) => {
+  console.log("ComponentName received data:", data);
   const [chartData, setChartData] = useState<any>(null);
-
   // Function to map degrees to compass directions
   const getCompassDirection = (deg: number) => {
     if (deg >= 337.5 || deg < 22.5) return `${deg.toFixed(1)}° N`;

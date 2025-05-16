@@ -10,6 +10,7 @@ interface SpeedHeightBarChartProps {
 }
 
 const SpeedHeightBarChart = ({ data }: SpeedHeightBarChartProps) => {
+  console.log("ComponentName received data:", data);
   const [chartData, setChartData] = useState<any>(null);
 
   useEffect(() => {
