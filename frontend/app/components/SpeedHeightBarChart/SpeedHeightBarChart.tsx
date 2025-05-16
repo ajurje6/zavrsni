@@ -1,16 +1,29 @@
 "use client";
-import { Bar } from 'react-chartjs-2';
-import { Chart as ChartJS, Title, Tooltip, Legend, BarElement, CategoryScale, LinearScale } from 'chart.js';
-import { useEffect, useState } from 'react';
 
-ChartJS.register(Title, Tooltip, Legend, BarElement, CategoryScale, LinearScale);
+import dynamic from "next/dynamic";
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  Title,
+  Tooltip,
+  Legend,
+} from "chart.js";
+import { useEffect, useState } from "react";
+
+// Dynamic import with SSR disabled for Bar chart
+const BarChart = dynamic(() => import("react-chartjs-2").then((mod) => mod.Bar), {
+  ssr: false,
+});
+
+ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
 interface SpeedHeightBarChartProps {
   data: any[];
 }
 
 const SpeedHeightBarChart = ({ data }: SpeedHeightBarChartProps) => {
-  console.log("SpeedHeightBarChart received data:", data);
   const [chartData, setChartData] = useState<any>(null);
 
   useEffect(() => {
@@ -19,27 +32,26 @@ const SpeedHeightBarChart = ({ data }: SpeedHeightBarChartProps) => {
       return;
     }
 
-    const heights = [...new Set(data.map((entry: any) => entry.height))];
+    // Get unique heights
+    const heights = [...new Set(data.map((entry) => entry.height))];
 
+    // Calculate average wind speeds per height
     const avgWindSpeeds = heights.map((height) => {
-      const entriesForHeight = data.filter((entry: any) => entry.height === height);
+      const entriesForHeight = data.filter((entry) => entry.height === height);
 
-      if (entriesForHeight.length === 0) return null;
-
-      // Filter out invalid speed entries before averaging
+      // Filter valid speeds only
       const validSpeeds = entriesForHeight
-        .map(entry => entry.speed)
-        .filter((speed: any) => typeof speed === 'number' && !isNaN(speed));
+        .map((entry) => entry.speed)
+        .filter((speed) => typeof speed === "number" && !isNaN(speed));
 
       if (validSpeeds.length === 0) return null;
 
-      const totalSpeed = validSpeeds.reduce((sum: number, speed: number) => sum + speed, 0);
+      const totalSpeed = validSpeeds.reduce((sum, speed) => sum + speed, 0);
       const avg = totalSpeed / validSpeeds.length;
-
-      return isNaN(avg) ? null : avg;
+      return isNaN(avg) ? null : parseFloat(avg.toFixed(2));
     });
 
-    // Filter out heights and speeds where avg speed is null
+    // Filter out null values
     const filteredHeights = heights.filter((_, i) => avgWindSpeeds[i] !== null);
     const filteredSpeeds = avgWindSpeeds.filter((v): v is number => v !== null);
 
@@ -52,64 +64,65 @@ const SpeedHeightBarChart = ({ data }: SpeedHeightBarChartProps) => {
       labels: filteredHeights.map(String),
       datasets: [
         {
-          label: 'Average Wind Speed (m/s)',
+          label: "Average Wind Speed (m/s)",
           data: filteredSpeeds,
-          backgroundColor: "red",
-          borderColor: "red",
+          backgroundColor: "rgba(255, 0, 0, 0.6)",
+          borderColor: "rgba(255, 0, 0, 1)",
           borderWidth: 1,
         },
       ],
     });
   }, [data]);
 
-  if (!chartData) return <p>No valid data available to display chart.</p>;
+  const options = {
+    responsive: true,
+    plugins: {
+      title: {
+        display: true,
+        text: "Average Wind Speed by Height",
+        color: "black",
+        font: {
+          size: 20,
+          weight: 700,
+          family: "Arial",
+        },
+        align: "start" as const,
+      },
+      tooltip: {
+        mode: "index" as const,
+        intersect: false,
+      },
+      legend: {
+        position: "top" as const,
+      },
+    },
+    scales: {
+      x: {
+        title: {
+          display: true,
+          text: "Height (m)",
+          font: {
+            size: 16,
+          },
+        },
+      },
+      y: {
+        title: {
+          display: true,
+          text: "Wind Speed (m/s)",
+          font: {
+            size: 16,
+          },
+        },
+        beginAtZero: true,
+      },
+    },
+  };
 
   return (
-    <div className="chart-container">
-      <Bar
-        data={chartData}
-        options={{
-          responsive: true,
-          plugins: {
-            title: {
-              display: true,
-              text: 'Average Wind Speed by Height',
-              color: 'black',
-              font: {
-                size: 20,
-                weight: 'bold',
-                family: 'Arial',
-              },
-              align: 'start',
-            },
-            tooltip: {
-              mode: 'index',
-              intersect: false,
-            },
-          },
-          scales: {
-            x: {
-              title: {
-                display: true,
-                text: 'Height (m)',
-                font:{
-                  size:16,
-                }
-              },
-            },
-            y: {
-              title: {
-                display: true,
-                text: 'Wind Speed (m/s)',
-                font:{
-                  size:16,
-                }
-              },
-              beginAtZero: true,
-            },
-          },
-        }}
-      />
+    <div className="p-4">
+      <h2 className="text-xl font-bold mb-2">Average Wind Speed by Height</h2>
+      {chartData ? <BarChart data={chartData} options={options} /> : <p>No valid data available.</p>}
     </div>
   );
 };

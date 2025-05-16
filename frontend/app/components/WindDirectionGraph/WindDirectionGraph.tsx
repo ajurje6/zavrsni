@@ -1,5 +1,6 @@
 "use client";
-import { Line } from "react-chartjs-2";
+
+import dynamic from "next/dynamic";
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -11,13 +12,17 @@ import {
 } from "chart.js";
 import { useEffect, useState } from "react";
 
+// Dynamically import Line with SSR disabled
+const LineChart = dynamic(() => import("react-chartjs-2").then((mod) => mod.Line), {
+  ssr: false,
+});
+
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Legend);
 
 const WindDirectionGraph = ({ data }: { data: any }) => {
   console.log("WindDirectionGraph received data:", data);
   const [chartData, setChartData] = useState<any>(null);
 
-  // Function to map degrees to compass directions
   const getCompassDirection = (deg: number) => {
     if (deg >= 337.5 || deg < 22.5) return `${deg.toFixed(1)}° N`;
     if (deg >= 22.5 && deg < 67.5) return `${deg.toFixed(1)}° NE`;
@@ -36,7 +41,6 @@ const WindDirectionGraph = ({ data }: { data: any }) => {
       return;
     }
 
-    // Group wind directions by time and filter out invalid directions
     const groupedData: Record<string, number[]> = {};
     data.forEach((entry: any) => {
       if (typeof entry.direction === "number" && !isNaN(entry.direction)) {
@@ -47,7 +51,6 @@ const WindDirectionGraph = ({ data }: { data: any }) => {
       }
     });
 
-    // Calculate average per time period
     const averagedData = Object.entries(groupedData)
       .map(([time, directions]) => {
         if (directions.length === 0) return null;
@@ -88,7 +91,7 @@ const WindDirectionGraph = ({ data }: { data: any }) => {
     <div className="p-4 bg-white text-black rounded-lg">
       <h2 className="text-xl font-bold mb-2">Wind Direction Over Time</h2>
       {chartData ? (
-        <Line
+        <LineChart
           data={chartData}
           options={{
             responsive: true,
@@ -137,6 +140,7 @@ const WindDirectionGraph = ({ data }: { data: any }) => {
 };
 
 export default WindDirectionGraph;
+
 
 
 

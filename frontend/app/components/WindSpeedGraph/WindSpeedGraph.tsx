@@ -1,5 +1,6 @@
 "use client";
-import { Line } from "react-chartjs-2";
+
+import dynamic from "next/dynamic";
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -12,20 +13,25 @@ import {
 } from "chart.js";
 import { useEffect, useState } from "react";
 
+// Dynamic import to avoid SSR issues
+const LineChart = dynamic(() => import("react-chartjs-2").then((mod) => mod.Line), {
+  ssr: false,
+});
+
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend);
 
 const WindSpeedGraph = ({ data }: { data: any }) => {
   const [chartData, setChartData] = useState<any>(null);
-  console.log("Raw data speeds:", data.map((d: any) => d.speed));
+
   useEffect(() => {
     if (!data || data.length === 0) {
       setChartData(null);
       return;
     }
+
     const groupedData: Record<string, number[]> = {};
 
     data.forEach((entry: any) => {
-      // Only include valid speed values
       if (typeof entry.speed === "number" && !isNaN(entry.speed)) {
         if (!groupedData[entry.time]) {
           groupedData[entry.time] = [];
@@ -42,7 +48,6 @@ const WindSpeedGraph = ({ data }: { data: any }) => {
       })
       .filter((entry): entry is { time: string; avgSpeed: number } => entry !== null);
 
-    // Filter out any entries with invalid avgSpeed
     const validEntries = averagedData.filter(
       (entry) => typeof entry.avgSpeed === "number" && !isNaN(entry.avgSpeed)
     );
@@ -54,8 +59,6 @@ const WindSpeedGraph = ({ data }: { data: any }) => {
 
     const labels = validEntries.map((entry) => entry.time);
     const avgSpeeds = validEntries.map((entry) => entry.avgSpeed);
-
-    console.log("Final chart entries:", validEntries);
 
     setChartData({
       labels,
@@ -103,12 +106,13 @@ const WindSpeedGraph = ({ data }: { data: any }) => {
   return (
     <div className="p-4">
       <h2 className="text-xl font-bold mb-2">Wind Speed Over Time</h2>
-      {chartData ? <Line data={chartData} options={options} /> : <p>No data available.</p>}
+      {chartData ? <LineChart data={chartData} options={options} /> : <p>No data available.</p>}
     </div>
   );
 };
 
 export default WindSpeedGraph;
+
 
 
 
