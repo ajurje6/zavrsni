@@ -82,6 +82,7 @@ const WindDirectionGraph = ({ data }: { data: any }) => {
           backgroundColor: "rgba(255, 0, 0, 0.3)",
           pointRadius: 4,
           pointBackgroundColor: "red",
+          parsing: false,
         },
       ],
     });
