@@ -79,7 +79,7 @@ const WindDirectionGraph = ({ data }: { data: any }) => {
           label: "Average Wind Direction (°)",
           data: avgWindDirections,
           borderColor: "red",
-          backgroundColor: "rgba(255, 0, 0, 0.3)",
+          backgroundColor: "red",
           pointRadius: 4,
           pointBackgroundColor: "red",
         },

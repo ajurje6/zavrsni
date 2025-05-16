@@ -66,8 +66,8 @@ const SpeedHeightBarChart = ({ data }: SpeedHeightBarChartProps) => {
         {
           label: "Average Wind Speed (m/s)",
           data: filteredSpeeds,
-          backgroundColor: "rgba(255, 0, 0, 0.2)",
-          borderColor: "rgba(255, 0, 0, 1)",
+          backgroundColor: "red",
+          borderColor: "red",
           borderWidth: 1,
         },
       ],

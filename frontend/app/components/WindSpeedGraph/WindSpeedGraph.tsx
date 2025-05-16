@@ -70,8 +70,8 @@ const WindSpeedGraph = ({ data }: { data: any }) => {
         {
           label: "Average Wind Speed (m/s)",
           data: avgSpeeds,
-          borderColor: "rgba(255, 0, 0, 1)",
-          backgroundColor: "rgba(255, 0, 0, 0.2)",
+          borderColor: "red",
+          backgroundColor: "red",
           tension: 0.3,
         },
       ],
