@@ -16,8 +16,7 @@ ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, T
 
 const WindSpeedGraph = ({ data }: { data: any }) => {
   const [chartData, setChartData] = useState<any>(null);
-  console.log("WindSpeedGraph received data:", data);
-
+  console.log("Raw data speeds:", data.map((d: any) => d.speed));
   useEffect(() => {
     if (!data || data.length === 0) {
       setChartData(null);
