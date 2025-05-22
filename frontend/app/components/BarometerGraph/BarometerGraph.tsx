@@ -35,7 +35,7 @@ ChartJS.register(
 export default function BarometerGraph() {
     const [chartData, setChartData] = useState<any>(null);
     const [isLoading, setIsLoading] = useState<boolean>(true);
-    const [selectedDate, setSelectedDate] = useState<string>("2025-01-03");
+    const [selectedDate, setSelectedDate] = useState<string>("2025-01-04");
     const [minMaxAvgData, setMinMaxAvgData] = useState<any[]>([]);
 
     // Dynamically import zoom plugin to prevent SSR issues
@@ -54,9 +54,23 @@ export default function BarometerGraph() {
     
                 if (data.length === 0) {
                     console.error("No data received from API.");
-                    setChartData(null); // Explicitly set chartData to null when no data
+                    setChartData(null);
                     setIsLoading(false);
                     return;
+                }
+    
+                // Build a map for quick lookup
+                const dataMap = new Map(data.map((d: any) => [new Date(d.datetime).toISOString(), d.pressure]));
+    
+                // Generate all minute timestamps for the selected date
+                const start = new Date(selectedDate + "T00:00:00");
+                const end = new Date(selectedDate + "T23:59:00");
+                const labels: string[] = [];
+                const values: (number | null)[] = [];
+                for (let t = new Date(start); t <= end; t.setMinutes(t.getMinutes() + 1)) {
+                    const iso = t.toISOString();
+                    labels.push(iso);
+                    values.push(dataMap.has(iso) ? (dataMap.get(iso) as number) : null);
                 }
     
                 const pressures = data.map((d: any) => d.pressure);
@@ -64,7 +78,6 @@ export default function BarometerGraph() {
                 const maxPressure = Math.max(...pressures);
                 const avgPressure = (pressures.reduce((acc: number, pressure: number) => acc + pressure, 0) / pressures.length).toFixed(4);
                 setMinMaxAvgData((prevData) => {
-                    // Prevent duplicate dates in the table
                     if (!prevData.some(entry => entry.date === selectedDate)) {
                         return [
                             ...prevData,
@@ -72,7 +85,7 @@ export default function BarometerGraph() {
                                 date: selectedDate,
                                 min_pressure: minPressure,
                                 max_pressure: maxPressure,
-                                avg_pressure: parseFloat(avgPressure), // Ensure it is a number
+                                avg_pressure: parseFloat(avgPressure),
                             },
                         ];
                     }
@@ -80,13 +93,15 @@ export default function BarometerGraph() {
                 });
     
                 setChartData({
-                    labels: data.map((d: any) => new Date(d.datetime).toISOString()),
+                    labels,
                     datasets: [{
                         label: "Pressure (hPa)",
-                        data: data.map((d: any) => d.pressure),
-                        backgroundcolor: "red",
+                        data: values,
+                        backgroundColor: "red",
                         borderColor: "red",
                         fill: true,
+                        pointRadius: 0,
+                        spanGaps: false,
                     }],
                 });
     
@@ -94,7 +109,7 @@ export default function BarometerGraph() {
             })
             .catch((error) => {
                 console.error("Error fetching data:", error);
-                setChartData(null); // Explicitly set chartData to null on error
+                setChartData(null);
                 setIsLoading(false);
             });
     }, [selectedDate]);

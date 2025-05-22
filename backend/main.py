@@ -25,6 +25,10 @@ import matplotlib.cm as cm
 import matplotlib.colors as mcolors
 import numpy as np
 from influxdb_client import InfluxDBClient
+from matplotlib.dates import date2num
+from zoneinfo import ZoneInfo
+import matplotlib
+matplotlib.use("Agg")
 
 app = FastAPI()
 
@@ -145,8 +149,8 @@ def generate_sodar_plot(date: str = Query(..., description="Date in YYYY-MM-DD f
         end_dt = start_dt + timedelta(days=1)
     except ValueError:
         return Response(content="Invalid date format", status_code=400)
-    
-    client = InfluxDBClient(url=INFLUX_URL, token=INFLUX_TOKEN, org=INFLUX_ORG, verify_ssl=False  )
+
+    client = InfluxDBClient(url=INFLUX_URL, token=INFLUX_TOKEN, org=INFLUX_ORG, verify_ssl=False)
     query_api = client.query_api()
 
     query = f'''
@@ -165,43 +169,49 @@ def generate_sodar_plot(date: str = Query(..., description="Date in YYYY-MM-DD f
     result['height'] = result['height'].astype(float)
     result = result.sort_values(by=['_time', 'height'])
 
-    # Get the last fetched time
-    last_fetched = result['_time'].max().strftime("%Y-%m-%d %H:%M:%S")
+    # Convert time to matplotlib's float format
+    result['matplotlib_time'] = result['_time'].map(lambda x: date2num(x))
 
-    fig, ax = plt.subplots(figsize=(18, 8))
-    times = result['_time'].unique()
-    heights = sorted(result['height'].unique())
+    local_time = result['_time'].max()
+    last_fetched = local_time.strftime("%Y-%m-%d %H:%M:%S")
+
+    fig, ax = plt.subplots(figsize=(17, 8))
     cmap = cm.jet
-    norm = mcolors.Normalize(vmin=0, vmax=50)
+    norm = mcolors.Normalize(vmin=0, vmax=40)
 
-    for t in times:
-        df_time = result[result['_time'] == t]
-        df_time = df_time.sort_values(by='height')
-        for _, row in df_time.iterrows():
-            x = t
-            y = row['height']
-            speed = row['speed']
-            direction = row['direction']
-            angle_rad = np.radians(direction)
-            dx = np.sin(angle_rad)
-            dy = np.cos(angle_rad)
-            ax.quiver(x, y, dx, dy, color=cmap(norm(speed)), angles='xy', scale=20, scale_units='xy', width=0.002)
+    # Prepare arrays
+    x = result['matplotlib_time'].values
+    y = result['height'].values
+    speed = result['speed'].values
+    direction = result['direction'].values
 
+    # Convert direction to u, v
+    u = speed * np.sin(np.radians(direction - 180))
+    v = speed * np.cos(np.radians(direction - 180))
+
+    # Draw wind vectors
+    q = ax.quiver(x, y, u / speed, v / speed, speed, cmap=cmap, norm=norm, angles='uv', scale=50, width=0.0015)
+
+    # Axis formatting
     ax.set_ylabel("Height [m]")
     ax.set_xlabel("Time")
     ax.set_title(f"SODAR Wind Profile\nData last fetched at: {last_fetched}")
     ax.grid(True)
+    ax.xaxis_date()
+    fig.autofmt_xdate()
 
+    # Colorbar
     sm = cm.ScalarMappable(cmap=cmap, norm=norm)
+    sm.set_array(speed)
     cbar = fig.colorbar(sm, ax=ax, orientation='vertical')
     cbar.set_label("Wind Speed [m/s]")
 
-    fig.autofmt_xdate()
+    # Save to buffer
     buf = BytesIO()
     plt.savefig(buf, format='png', bbox_inches='tight', dpi=150)
     plt.close(fig)
     buf.seek(0)
-    return Response(content=buf.read(), media_type="image/png")
+    return Response(content=buf.read(), media_type="image/png") 
 
 #BAROMETER
 def parse_txt(file_path):
@@ -376,4 +386,4 @@ async def get_stacked_graph_data(
 @app.on_event("startup")
 async def startup_event():
     pass
-# To run the server, use the command: source venv/bin/activate python -m uvicorn main:app --reload
+# To run the server, use the command: source venv/bin/activate python -m uvicorn main:app --reload WIN:.\venv\Scripts\python.exe -m uvicorn main:app --reload

@@ -12,6 +12,7 @@ import {
   Legend,
 } from "chart.js";
 import { useEffect, useState } from "react";
+import axios from "axios";
 
 // Dynamic import to avoid SSR issues
 const LineChart = dynamic(() => import("react-chartjs-2").then((mod) => mod.Line), {
@@ -20,69 +21,91 @@ const LineChart = dynamic(() => import("react-chartjs-2").then((mod) => mod.Line
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend);
 
-const WindSpeedGraph = ({ data }: { data: any }) => {
+const WindSpeedGraph = () => {
   const [chartData, setChartData] = useState<any>(null);
+  const [selectedDate, setSelectedDate] = useState(() => {
+    const today = new Date();
+    return today.toISOString().split("T")[0]; // Format YYYY-MM-DD
+  });
+  const [selectedHeight, setSelectedHeight] = useState<number | null>(null);
+  const [heights, setHeights] = useState<number[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    if (!data || data.length === 0) {
-      setChartData(null);
-      return;
-    }
-  
-    const groupedData: Record<string, number[]> = {};
-  
-    data.forEach((entry: any) => {
-      if (typeof entry.speed === "number" && !isNaN(entry.speed)) {
-        if (!groupedData[entry.time]) {
-          groupedData[entry.time] = [];
+    const fetchData = async () => {
+      setIsLoading(true);
+      try {
+        const response = await axios.get(`https://zavrsni-4knw.onrender.com/sodar-data?date=${selectedDate}`);
+        const data = response.data;
+
+        if (!data || data.length === 0) {
+          setChartData(null);
+          setHeights([]);
+          return;
         }
-        groupedData[entry.time].push(entry.speed);
+
+        // Extract unique heights
+        const uniqueHeights = Array.from(
+          new Set<number>(data.map((entry: { height: number }) => Number(entry.height)))
+        ).sort((a, b) => a - b);
+        setHeights(uniqueHeights);
+
+        // If no height is selected, set the first height as default
+        if (selectedHeight === null && uniqueHeights.length > 0) {
+          setSelectedHeight(uniqueHeights[0]);
+        }
+
+        // Filter data for the selected height
+        if (selectedHeight !== null) {
+          const filteredData = data.filter(
+            (entry: any) => entry.height === selectedHeight
+          );
+
+          const labels: string[] = [];
+          const speeds: (number | null)[] = [];
+
+          filteredData.forEach((entry: any) => {
+            labels.push(entry.time);
+            speeds.push(entry.speed > 0 ? entry.speed : null); // show line breaks for 0 values
+          });
+
+          setChartData({
+            labels,
+            datasets: [
+              {
+                label: `Wind Speed (m/s) at ${selectedHeight}m`,
+                data: speeds,
+                borderColor: "red",
+                backgroundColor: "rgba(255, 0, 0, 0.1)",
+                tension: 0,
+                pointRadius: 0,
+                spanGaps: false, // important: show line breaks where data is null
+              },
+            ],
+          });
+        }
+      } catch (error) {
+        console.error("Error fetching data:", error);
+        setChartData(null);
+        setHeights([]);
+      } finally {
+        setIsLoading(false);
       }
-    });
-  
-    const averagedData = Object.entries(groupedData)
-      .map(([time, speeds]) => {
-        if (speeds.length === 0) return null;
-        const avgSpeed = speeds.reduce((sum, speed) => sum + speed, 0) / speeds.length;
-        return { time, avgSpeed: parseFloat(avgSpeed.toFixed(2)) };
-      })
-      .filter((entry): entry is { time: string; avgSpeed: number } => entry !== null);
-  
-    const validEntries = averagedData.filter(
-      (entry) => typeof entry.avgSpeed === "number" && !isNaN(entry.avgSpeed)
-    );
-  
-    if (validEntries.length === 0) {
-      setChartData(null);
-      return;
-    }
-  
-    const labels = validEntries.map((entry) => entry.time);
-    const avgSpeeds = validEntries.map((entry) => entry.avgSpeed);
-  
-    console.log("Labels:", labels);
-    console.log("Average speeds:", avgSpeeds);
-    console.log("Any invalid speeds?", avgSpeeds.some(s => typeof s !== "number" || isNaN(s)));
-  
-    setChartData({
-      labels,
-      datasets: [
-        {
-          label: "Average Wind Speed (m/s)",
-          data: avgSpeeds,
-          borderColor: "red",
-          backgroundColor: "red",
-          tension: 0.3,
-        },
-      ],
-    });
-  }, [data]);  
+    };
+
+    fetchData();
+  }, [selectedDate, selectedHeight]);
 
   const options = {
     responsive: true,
     plugins: {
       legend: {
         position: "top" as const,
+      },
+      tooltip: {
+        callbacks: {
+          label: (context: any) => `Wind Speed: ${context.raw} m/s`,
+        },
       },
     },
     scales: {
@@ -110,12 +133,47 @@ const WindSpeedGraph = ({ data }: { data: any }) => {
   return (
     <div className="p-4">
       <h2 className="text-xl font-bold mb-2">Wind Speed Over Time</h2>
-      {chartData ? <LineChart data={chartData} options={options} /> : <p>No data available.</p>}
+
+      {/* Date Picker */}
+      <div className="mb-4 flex items-center">
+        <label className="mr-4">
+          <span className="mr-2">Select Date:</span>
+          <input
+            type="date"
+            value={selectedDate}
+            onChange={(e) => setSelectedDate(e.target.value)}
+            className="p-2 border rounded"
+          />
+        </label>
+
+        {/* Height Selector */}
+        <label>
+          <span className="mr-2">Select Height:</span>
+          <select
+            value={selectedHeight || ""}
+            onChange={(e) => setSelectedHeight(Number(e.target.value))}
+            className="p-2 border rounded"
+          >
+            {heights.map((height) => (
+              <option key={height} value={height}>
+                {height} m
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+
+      {/* Loading */}
+      {isLoading && <p>Loading data...</p>}
+
+      {/* Chart */}
+      {chartData ? <LineChart data={chartData} options={options} /> : !isLoading && <p>No data available.</p>}
     </div>
   );
 };
 
 export default WindSpeedGraph;
+
 
 
 
