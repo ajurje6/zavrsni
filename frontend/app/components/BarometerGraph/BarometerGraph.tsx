@@ -181,7 +181,7 @@ export default function BarometerGraph() {
     return (
         <div className="flex flex-col items-center p-6">
             {/* Title for Barometer Data Visualization */}
-            <h1 className="text-3xl font-semibold mb-4">Barometer Data Visualization</h1>
+            <h1 className="text-3xl font-semibold mb-4">Air pressure</h1>
 
             {/* Date Picker */}
             <label className="mb-4">
