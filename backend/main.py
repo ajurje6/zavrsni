@@ -28,6 +28,8 @@ from influxdb_client import InfluxDBClient
 from matplotlib.dates import date2num
 from zoneinfo import ZoneInfo
 import matplotlib
+import time
+from typing import Any
 matplotlib.use("Agg")
 
 app = FastAPI()
@@ -50,17 +52,15 @@ INFLUX_TOKEN = os.getenv("INFLUX_TOKEN")
 INFLUX_ORG = os.getenv("INFLUX_ORG")
 INFLUX_BUCKET = os.getenv("INFLUX_BUCKET")
 
+# Global variables for Influx client and query api
+client: InfluxDBClient = None
+query_api = None
+
 @app.get("/sodar-data")
 async def get_sodar_data(date: str = Query(..., description="Format: YYYY-MM-DD")):
     try:
-        # Parse and calculate start and end of the day
         start_time = datetime.strptime(date, "%Y-%m-%d")
         end_time = start_time + timedelta(days=1)
-
-        client = InfluxDBClient(
-            url=INFLUX_URL, token=INFLUX_TOKEN, org=INFLUX_ORG, verify_ssl=False
-        )
-        query_api = client.query_api()
 
         query = f'''
         from(bucket: "{INFLUX_BUCKET}")
@@ -78,7 +78,6 @@ async def get_sodar_data(date: str = Query(..., description="Format: YYYY-MM-DD"
         df["_time"] = pd.to_datetime(df["_time"])
         df = df.dropna(subset=["speed", "direction", "height"])
         df["height"] = df["height"].astype(float)
-
         df = df.sort_values(by=["_time", "height"])
 
         result = [
@@ -94,53 +93,63 @@ async def get_sodar_data(date: str = Query(..., description="Format: YYYY-MM-DD"
         return result
 
     except Exception as e:
+        logger.error(f"Error in get_sodar_data: {e}")
         return {"error": str(e)}
+
+# Cache variables
+summary_cache: dict[str, Any] = {"timestamp": 0, "data": None}
+CACHE_TTL_SECONDS = 1200
 
 @app.get("/sodar-summary")
 async def get_sodar_summary():
-    client = InfluxDBClient(url=INFLUX_URL, token=INFLUX_TOKEN, org=INFLUX_ORG, verify_ssl=False)
-    query_api = client.query_api()
+    global summary_cache
+    now = time.time()
 
-    query = f'''
-    from(bucket: "{INFLUX_BUCKET}")
-      |> range(start: 0)
-      |> filter(fn: (r) => r._measurement == "sodar")
-      |> pivot(rowKey:["_time"], columnKey: ["_field"], valueColumn: "_value")
-      |> keep(columns: ["_time", "speed", "direction"])
-    '''
+    # Return cached data if within TTL
+    if summary_cache["data"] and (now - summary_cache["timestamp"]) < CACHE_TTL_SECONDS:
+        return {"data": summary_cache["data"]}
 
-    df = query_api.query_data_frame(query)
-    if df.empty:
-        return {"data": []}
+    try:
+        query = f'''
+        from(bucket: "{INFLUX_BUCKET}")
+          |> range(start: 0)
+          |> filter(fn: (r) => r._measurement == "sodar")
+          |> pivot(rowKey:["_time"], columnKey: ["_field"], valueColumn: "_value")
+          |> keep(columns: ["_time", "speed", "direction"])
+        '''
 
-    df["_time"] = pd.to_datetime(df["_time"])
-    df["date"] = df["_time"].dt.date  # returns date object (no time, no tz)
+        df = query_api.query_data_frame(query)
+        if df.empty:
+            return {"data": []}
 
-    df = df.dropna(subset=["speed", "direction"])
-    df["speed"] = df["speed"].astype(float)
-    df["direction"] = df["direction"].astype(float)
+        df["_time"] = pd.to_datetime(df["_time"])
+        df["date"] = df["_time"].dt.date
+        df = df.dropna(subset=["speed", "direction"])
+        df["speed"] = df["speed"].astype(float)
+        df["direction"] = df["direction"].astype(float)
+        df = df[df["speed"] > 0]
 
-    # Filter out rows where speed is 0 (invalid)
-    df = df[df["speed"] > 0]
+        grouped = df.groupby("date")
 
-    grouped = df.groupby("date")
+        summary = []
+        for date, group in grouped:
+            speeds = group["speed"]
+            directions = group["direction"]
+            summary.append({
+                "date": str(date),
+                "max_speed": speeds.max(),
+                "min_speed": speeds.min(),
+                "avg_speed": speeds.mean(),
+                "avg_direction": directions.mean()
+            })
 
-    summary = []
-    for date, group in grouped:
-        speeds = group["speed"]
-        directions = group["direction"]
+        summary.sort(key=lambda x: x["date"])
+        summary_cache = {"timestamp": now, "data": summary}
+        return {"data": summary}
 
-        summary.append({
-            "date": str(date),  # convert date object to string 'YYYY-MM-DD'
-            "max_speed": speeds.max(),
-            "min_speed": speeds.min(),
-            "avg_speed": speeds.mean(),
-            "avg_direction": directions.mean()
-        })
-
-    summary.sort(key=lambda x: x["date"])  # dates are strings, format-safe
-
-    return {"data": summary}
+    except Exception as e:
+        logger.error(f"Error in get_sodar_summary: {e}")
+        return {"error": str(e)}
 
 @app.get("/sodar-plot")
 def generate_sodar_plot(date: str = Query(..., description="Date in YYYY-MM-DD format")):
@@ -150,68 +159,64 @@ def generate_sodar_plot(date: str = Query(..., description="Date in YYYY-MM-DD f
     except ValueError:
         return Response(content="Invalid date format", status_code=400)
 
-    client = InfluxDBClient(url=INFLUX_URL, token=INFLUX_TOKEN, org=INFLUX_ORG, verify_ssl=False)
-    query_api = client.query_api()
+    try:
+        query = f'''
+        from(bucket: "{INFLUX_BUCKET}")
+          |> range(start: {start_dt.isoformat()}Z, stop: {end_dt.isoformat()}Z)
+          |> filter(fn: (r) => r._measurement == "sodar")
+          |> pivot(rowKey:["_time"], columnKey: ["_field"], valueColumn: "_value")
+          |> keep(columns: ["_time", "height", "speed", "direction"])
+        '''
 
-    query = f'''
-    from(bucket: "{INFLUX_BUCKET}")
-      |> range(start: {start_dt.isoformat()}Z, stop: {end_dt.isoformat()}Z)
-      |> filter(fn: (r) => r._measurement == "sodar")
-      |> pivot(rowKey:["_time"], columnKey: ["_field"], valueColumn: "_value")
-      |> keep(columns: ["_time", "height", "speed", "direction"])
-    '''
+        result = query_api.query_data_frame(query)
+        if result.empty:
+            return Response(content="No data available", status_code=404)
 
-    result = query_api.query_data_frame(query)
-    if result.empty:
-        return Response(content="No data available", status_code=404)
+        result['_time'] = pd.to_datetime(result['_time'])
+        result['height'] = result['height'].astype(float)
+        result = result.sort_values(by=['_time', 'height'])
 
-    result['_time'] = pd.to_datetime(result['_time'])
-    result['height'] = result['height'].astype(float)
-    result = result.sort_values(by=['_time', 'height'])
+        # Convert time to matplotlib float format
+        result['matplotlib_time'] = result['_time'].map(lambda x: date2num(x))
 
-    # Convert time to matplotlib's float format
-    result['matplotlib_time'] = result['_time'].map(lambda x: date2num(x))
+        local_time = result['_time'].max()
+        last_fetched = local_time.strftime("%Y-%m-%d %H:%M:%S")
 
-    local_time = result['_time'].max()
-    last_fetched = local_time.strftime("%Y-%m-%d %H:%M:%S")
+        fig, ax = plt.subplots(figsize=(17, 8))
+        cmap = cm.jet
+        norm = mcolors.Normalize(vmin=0, vmax=40)
 
-    fig, ax = plt.subplots(figsize=(17, 8))
-    cmap = cm.jet
-    norm = mcolors.Normalize(vmin=0, vmax=40)
+        x = result['matplotlib_time'].values
+        y = result['height'].values
+        speed = result['speed'].values
+        direction = result['direction'].values
 
-    # Prepare arrays
-    x = result['matplotlib_time'].values
-    y = result['height'].values
-    speed = result['speed'].values
-    direction = result['direction'].values
+        u = speed * np.sin(np.radians(direction - 180))
+        v = speed * np.cos(np.radians(direction - 180))
 
-    # Convert direction to u, v
-    u = speed * np.sin(np.radians(direction - 180))
-    v = speed * np.cos(np.radians(direction - 180))
+        q = ax.quiver(x, y, u / speed, v / speed, speed, cmap=cmap, norm=norm, angles='uv', scale=50, width=0.0015)
 
-    # Draw wind vectors
-    q = ax.quiver(x, y, u / speed, v / speed, speed, cmap=cmap, norm=norm, angles='uv', scale=50, width=0.0015)
+        ax.set_ylabel("Height [m]")
+        ax.set_xlabel("Time")
+        ax.set_title(f"SODAR Wind Profile\nData last fetched at: {last_fetched}")
+        ax.grid(True)
+        ax.xaxis_date()
+        fig.autofmt_xdate()
 
-    # Axis formatting
-    ax.set_ylabel("Height [m]")
-    ax.set_xlabel("Time")
-    ax.set_title(f"SODAR Wind Profile\nData last fetched at: {last_fetched}")
-    ax.grid(True)
-    ax.xaxis_date()
-    fig.autofmt_xdate()
+        sm = cm.ScalarMappable(cmap=cmap, norm=norm)
+        sm.set_array(speed)
+        cbar = fig.colorbar(sm, ax=ax, orientation='vertical')
+        cbar.set_label("Wind Speed [m/s]")
 
-    # Colorbar
-    sm = cm.ScalarMappable(cmap=cmap, norm=norm)
-    sm.set_array(speed)
-    cbar = fig.colorbar(sm, ax=ax, orientation='vertical')
-    cbar.set_label("Wind Speed [m/s]")
+        buf = BytesIO()
+        plt.savefig(buf, format='png', bbox_inches='tight', dpi=150)
+        plt.close(fig)
+        buf.seek(0)
+        return Response(content=buf.read(), media_type="image/png")
 
-    # Save to buffer
-    buf = BytesIO()
-    plt.savefig(buf, format='png', bbox_inches='tight', dpi=150)
-    plt.close(fig)
-    buf.seek(0)
-    return Response(content=buf.read(), media_type="image/png") 
+    except Exception as e:
+        logger.error(f"Error in generate_sodar_plot: {e}")
+        return Response(content=f"Error generating plot: {e}", status_code=500)
 
 #BAROMETER
 def parse_txt(file_path):
@@ -384,6 +389,14 @@ async def get_stacked_graph_data(
         return {"error": "Error fetching data for the stacked graph."}
 
 @app.on_event("startup")
-async def startup_event():
-    pass
+def startup_event():
+    global client, query_api
+    client = InfluxDBClient(
+        url=INFLUX_URL,
+        token=INFLUX_TOKEN,
+        org=INFLUX_ORG,
+        verify_ssl=False
+    )
+    query_api = client.query_api()
+    logger.info("InfluxDB client initialized")
 # To run the server, use the command: source venv/bin/activate python -m uvicorn main:app --reload WIN:.\venv\Scripts\python.exe -m uvicorn main:app --reload
