@@ -1,13 +1,21 @@
 "use client";
 import React, { useEffect, useState } from "react";
-import { Bar } from "react-chartjs-2";
-import { Chart as ChartJS, BarElement, CategoryScale, LinearScale, Tooltip, Legend } from "chart.js";
+import {
+  Chart as ChartJS,
+  LineElement,
+  PointElement,
+  CategoryScale,
+  LinearScale,
+  Tooltip,
+  Legend,
+} from "chart.js";
+import { Line } from "react-chartjs-2";
 import { useForm } from "react-hook-form";
 
-ChartJS.register(BarElement, CategoryScale, LinearScale, Tooltip, Legend);
+ChartJS.register(LineElement, PointElement, CategoryScale, LinearScale, Tooltip, Legend);
 
-const StackedPressureChart = () => {
-  const DEFAULT_DATE = "2025-01-03"; // Default date
+const PressureLineChart = () => {
+  const DEFAULT_DATE = "2025-01-04";
 
   const { register, handleSubmit } = useForm<{ startDate: string; endDate: string }>({
     defaultValues: { startDate: DEFAULT_DATE, endDate: DEFAULT_DATE },
@@ -27,28 +35,17 @@ const StackedPressureChart = () => {
     fetch("https://zavrsni-4knw.onrender.com/stacked-graph")
       .then((response) => response.json())
       .then((responseData) => {
-        console.log("Fetched Data:", responseData);
-        setData(responseData.data);
-
-        // Automatically filter for default date
-        const defaultFiltered = responseData.data.filter(
-          (entry: DataEntry) => entry.date === DEFAULT_DATE
-        );
-        setFilteredData(defaultFiltered);
+        const fetched = responseData.data as DataEntry[];
+        setData(fetched);
+        setFilteredData(fetched.filter((entry) => entry.date === DEFAULT_DATE));
       })
       .catch((error) => console.error("Error fetching data:", error));
   }, []);
 
   const onSubmit = ({ startDate, endDate }: { startDate: string; endDate: string }) => {
-    if (!Array.isArray(data)) {
-      console.error("Data is not an array:", data);
-      return;
-    }
-
     const filtered = data
       .filter((entry) => entry.date >= startDate && entry.date <= endDate)
-      .sort((a, b) => a.date.localeCompare(b.date)); // Ensures correct date order
-
+      .sort((a, b) => a.date.localeCompare(b.date));
     setFilteredData(filtered);
   };
 
@@ -58,30 +55,33 @@ const StackedPressureChart = () => {
       {
         label: "Min Pressure",
         data: filteredData.map((entry) => entry.min_pressure),
-        backgroundColor: "red",
         borderColor: "red",
-        borderWidth: 1,
-        stack: "pressure",
+        backgroundColor: "red",
+        tension: 0.3,
+        fill: false,
+        pointRadius: filteredData.length === 1 ? 6 : 3,
       },
       {
         label: "Avg Pressure",
-        data: filteredData.map((entry) => entry.avg_pressure - entry.min_pressure),
-        backgroundColor: "blue",
+        data: filteredData.map((entry) => entry.avg_pressure),
         borderColor: "blue",
-        borderWidth: 1,
-        stack: "pressure",
+        backgroundColor: "blue",
+        tension: 0.3,
+        fill: false,
+        pointRadius: filteredData.length === 1 ? 6 : 3,
       },
       {
         label: "Max Pressure",
-        data: filteredData.map((entry) => entry.max_pressure - entry.avg_pressure),
-        backgroundColor: "green",
+        data: filteredData.map((entry) => entry.max_pressure),
         borderColor: "green",
-        borderWidth: 1,
-        stack: "pressure",
+        backgroundColor: "green",
+        tension: 0.3,
+        fill: false,
+        pointRadius: filteredData.length === 1 ? 6 : 3,
       },
     ],
   };
-  
+
   const options = {
     responsive: true,
     maintainAspectRatio: false,
@@ -89,18 +89,12 @@ const StackedPressureChart = () => {
       tooltip: {
         callbacks: {
           label: function (tooltipItem: any) {
-            const datasetIndex = tooltipItem.datasetIndex;
-            const index = tooltipItem.dataIndex;
-            const entry = filteredData[index];
-  
-            if (datasetIndex === 0) return `Min: ${entry.min_pressure.toFixed(2)}`;
-            if (datasetIndex === 1) return `Avg: ${entry.avg_pressure.toFixed(2)}`;
-            if (datasetIndex === 2) return `Max: ${entry.max_pressure.toFixed(2)}`;
+            return `${tooltipItem.dataset.label}: ${tooltipItem.raw.toFixed(2)} hPa`;
           },
         },
       },
       legend: {
-        position: 'top' as const,
+        position: "top" as const,
       },
     },
     scales: {
@@ -108,37 +102,30 @@ const StackedPressureChart = () => {
         title: {
           display: true,
           text: "Date",
-          font: {
-            size: 16,
-          },
+          font: { size: 16 },
         },
+        ticks: {}, // Add an empty ticks object to allow spreading
       },
       y: {
         title: {
           display: true,
           text: "Pressure (hPa)",
-          font: {
-            size: 16,
-          },
+          font: { size: 16 },
         },
         min: 1000,
         max: 1050,
-        ticks: {
-          stepSize: 10, // how much between each number on y-axis
-        },
+        ticks: { stepSize: 10 },
       },
     },
   };
-  
 
-  const baseWidthPerDate = 100; // Width per date in pixels
-  const minChartWidth = 400; // Minimum width
+  const baseWidthPerDate = 100;
+  const minChartWidth = 400;
   const dynamicChartWidth = Math.max(filteredData.length * baseWidthPerDate, minChartWidth);
 
   return (
     <div className="p-4 max-w-full mx-auto">
-      {/* Title for "Pressure Over Time" */}
-      <h2 className="text-xl font-bold mb-2 self-start">Pressure stack chart</h2>
+      <h2 className="text-xl font-bold mb-4">Pressure Line Chart</h2>
 
       <form
         onSubmit={handleSubmit(onSubmit)}
@@ -160,17 +147,60 @@ const StackedPressureChart = () => {
         </button>
       </form>
 
-      {/* Center the chart dynamically */}
       <div className="w-full flex justify-center">
-        <div className="h-[500px] min-w-[500px] mx-auto" style={{ width: `${dynamicChartWidth}px` }}>
-          <Bar data={chartData} options={options} />
+        <div
+          className={`h-[500px] min-w-[500px] mx-auto ${
+            filteredData.length === 1 ? "flex flex-col items-center justify-center" : ""
+          }`}
+          style={{
+            width:
+              filteredData.length === 1
+                ? "500px"
+                : `${dynamicChartWidth}px`,
+          }}
+        >
+          <Line
+            data={chartData}
+            options={{
+              ...options,
+              plugins: {
+              ...options.plugins,
+              legend: {
+              ...options.plugins.legend,
+              align: filteredData.length === 1 ? "center" : "start",  // ovo dodaj
+              },
+              },
+            scales: {
+              ...options.scales,
+              x: {
+              ...options.scales.x,
+            ticks: {
+              ...options.scales.x?.ticks,
+              align: filteredData.length === 1 ? "center" : "start",
+              callback: function (val: any, idx: number) {
+            if (filteredData.length === 1) {
+              return filteredData[0].date; 
+            }
+            return this.getLabelForValue(val); 
+          },
+        },
+      },
+    },
+  }}
+/>
+          {filteredData.length === 1 && (
+            <div className="mt-4 text-lg font-semibold text-center">
+              {filteredData[0].date}
+            </div>
+          )}
         </div>
       </div>
     </div>
   );
 };
 
-export default StackedPressureChart;
+export default PressureLineChart;
+
 
 
 

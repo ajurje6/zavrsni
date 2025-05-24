@@ -1,4 +1,4 @@
-"use client"
+"use client";
 import React, { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 
@@ -8,6 +8,7 @@ interface WindVector {
   height: number;
   date: string;
   speed: number;
+  direction: number;
 }
 
 const WindVectorPlot = () => {
@@ -26,17 +27,20 @@ const WindVectorPlot = () => {
           setLoading(false);
           return;
         }
-        const speedsByHeight: Record<number, number[]> = {};
-        apiData.forEach(({ height, speed }) => {
-          if (!speedsByHeight[height]) speedsByHeight[height] = [];
-          speedsByHeight[height].push(speed);
+        const speedsByHeight: Record<number, { speed: number[]; direction: number[] }> = {};
+        apiData.forEach(({ height, speed, direction }) => {
+          if (!speedsByHeight[height]) speedsByHeight[height] = { speed: [], direction: [] };
+          speedsByHeight[height].speed.push(speed);
+          speedsByHeight[height].direction.push(direction);
         });
 
         const averagedData: WindVector[] = Object.entries(speedsByHeight).map(
-          ([height, speeds]) => ({
+          ([height, obj]) => ({
             height: Number(height),
             date: selectedDate,
-            speed: speeds.reduce((a, b) => a + b, 0) / speeds.length,
+            speed: obj.speed.reduce((a, b) => a + b, 0) / obj.speed.length,
+            direction:
+              obj.direction.reduce((a, b) => a + b, 0) / obj.direction.length,
           })
         );
 
@@ -52,29 +56,16 @@ const WindVectorPlot = () => {
   if (loading) return <p>Loading data...</p>;
   if (data.length === 0) return <p>No data for {selectedDate}</p>;
 
-  const dateTimestamp = new Date(selectedDate).getTime();
-  const exaggerationFactor = 7;
-  const speedScale = 1_500_000;
-
-  const baseX = data.map(() => dateTimestamp);
-  const baseY = data.map((d) => d.height);
-  const endX = data.map(
-    (d) => dateTimestamp + d.speed * exaggerationFactor * speedScale
-  );
-  const endY = baseY;
-
-  const traces = data.map((d, i) => ({
-    x: [baseX[i], endX[i]],
-    y: [baseY[i], endY[i]],
+  const trace = {
+    x: data.map((d) => d.speed),
+    y: data.map((d) => d.height),
     mode: "lines+markers",
     type: "scatter",
-    line: { color: "blue", width: 6 },
-    marker: { size: 16, color: "red", symbol: "triangle-right" },
-    name: `Height ${d.height}m`,
-    hovertemplate: `Height: ${d.height} m<br>Avg Speed: ${d.speed.toFixed(
-      2
-    )} m/s<extra></extra>`,
-  }));
+    line: { color: "blue", width: 4 },
+    marker: { size: 6, color: "red" },
+    name: "Avg wind speed",
+    hovertemplate: `Height: %{y} m<br>Avg Speed: %{x:.2f} m/s<extra></extra>`,
+  };
 
   return (
     <div className="flex flex-col items-center w-full px-4 py-8">
@@ -87,10 +78,9 @@ const WindVectorPlot = () => {
           onChange={(e) => setSelectedDate(e.target.value)}
         />
       </label>
-
       <div className="w-full flex justify-center">
         <Plot
-          data={traces}
+          data={[trace]}
           layout={{
             title: {
               text: `Average Wind Speed by Height ${selectedDate}`,
@@ -99,23 +89,19 @@ const WindVectorPlot = () => {
               xanchor: "center",
             },
             xaxis: {
-              title: "Date (X shows speed as offset)",
-              type: "date",
-              range: [dateTimestamp - 1e7, dateTimestamp + 15e7],
-              tickvals: [dateTimestamp],
-              ticktext: [selectedDate],
-              showgrid: false,
+              title: "Avg Wind Speed (m/s)",
+              showgrid: true,
               zeroline: false,
               fixedrange: true,
             },
             yaxis: {
               title: "Height (m)",
-              range: [0, 500],
+              range: [0, 520],
               autorange: false,
               zeroline: false,
             },
             margin: { t: 70, b: 60, l: 70, r: 40 },
-            height: 850,
+            height: 950,
             showlegend: false,
           }}
           config={{ responsive: true, displayModeBar: false }}
